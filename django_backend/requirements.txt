@@ -1,0 +1,18 @@
+# ==============================================================================
+# Smart Parking Availability Platform - Django Backend Dependencies
+# ==============================================================================
+
+# Core Django Web Framework
+Django>=5.1.0,<5.2.0
+
+# Django REST Framework for API endpoints
+djangorestframework>=3.15.2,<3.16.0
+
+# Environment variables management (.env)
+python-dotenv>=1.0.1,<2.0.0
+
+# Oracle Database driver for Python (Thin mode default, no instant client required)
+oracledb>=2.5.0,<3.0.0
+
+# CORS headers for cross-origin API requests
+django-cors-headers>=4.6.0,<5.0.0

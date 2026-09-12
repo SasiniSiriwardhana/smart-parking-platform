@@ -1,0 +1,1 @@
+# Sessions app package initialization
