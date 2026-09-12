@@ -1,0 +1,16 @@
+{
+  "name": "smart-parking-frontend",
+  "version": "1.0.0",
+  "description": "Tailwind CSS setup for Smart Parking Availability Platform Django templates",
+  "scripts": {
+    "build:css": "npx @tailwindcss/cli -i ./static/css/input.css -o ./static/css/output.css --minify",
+    "watch:css": "npx @tailwindcss/cli -i ./static/css/input.css -o ./static/css/output.css --watch"
+  },
+  "keywords": ["smart-parking", "django", "tailwind"],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "@tailwindcss/cli": "^4.0.9",
+    "tailwindcss": "^4.0.9"
+  }
+}

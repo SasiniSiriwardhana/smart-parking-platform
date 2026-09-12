@@ -1,0 +1,215 @@
+{% extends 'base.html' %}
+
+{% block title %}Smart Parking Availability Platform - Find & Reserve Parking{% endblock %}
+
+{% block content %}
+<div class="relative overflow-hidden bg-gradient-to-b from-sky-50/50 via-white to-slate-50 pt-12 pb-20">
+    <!-- Subtle background blur blobs -->
+    <div class="absolute top-10 left-1/2 -translate-x-1/2 w-full max-w-7xl h-96 -z-10 pointer-events-none opacity-40 blur-3xl">
+        <div class="w-96 h-96 bg-sky-300 rounded-full mx-auto mix-blend-multiply filter"></div>
+        <div class="w-96 h-96 bg-indigo-300 rounded-full -mt-40 ml-40 mix-blend-multiply filter"></div>
+    </div>
+
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        
+        <!-- Hero Section -->
+        <div class="text-center max-w-3xl mx-auto pt-8 pb-12">
+            <!-- Project Stage Pill -->
+            <div class="inline-flex items-center space-x-2 px-3.5 py-1.5 rounded-full bg-sky-100 text-sky-800 text-xs font-semibold uppercase tracking-wider mb-6 shadow-xs border border-sky-200/60">
+                <span class="w-2 h-2 rounded-full bg-sky-600"></span>
+                <span>Day 1 Environment Setup &bull; Production Foundation</span>
+            </div>
+
+            <h1 class="font-heading text-4xl sm:text-5xl lg:text-6xl font-extrabold text-slate-900 tracking-tight leading-tight">
+                Smart Parking <br class="hidden sm:inline" />
+                <span class="bg-gradient-to-r from-sky-600 via-blue-600 to-indigo-600 bg-clip-text text-transparent">Availability Platform</span>
+            </h1>
+
+            <p class="mt-6 text-lg sm:text-xl text-slate-600 font-normal leading-relaxed">
+                Find available parking, compare options, and make smarter parking decisions.
+            </p>
+
+            <!-- Quick Action / Status Badges -->
+            <div class="mt-8 flex flex-wrap items-center justify-center gap-4">
+                <a href="/api/health/" class="inline-flex items-center px-6 py-3 rounded-xl bg-sky-600 hover:bg-sky-700 text-white font-medium text-sm shadow-lg shadow-sky-600/25 transition-all duration-200 transform hover:-translate-y-0.5">
+                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+                    </svg>
+                    Django REST Health Check
+                </a>
+                <a href="http://localhost:8081/api/recommendation/health" target="_blank" class="inline-flex items-center px-6 py-3 rounded-xl bg-white hover:bg-slate-50 text-slate-700 font-medium text-sm border border-slate-200 shadow-sm transition-all duration-200">
+                    <span class="w-2.5 h-2.5 rounded-full bg-amber-500 mr-2"></span>
+                    Spring Boot Service (Port 8081)
+                </a>
+            </div>
+        </div>
+
+        <!-- Architecture & Services Grid -->
+        <div id="services" class="mt-12 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            
+            <!-- Card 1: Django Backend -->
+            <div class="bg-white rounded-2xl p-6 border border-slate-200/80 shadow-xs hover:shadow-md transition-shadow">
+                <div class="w-12 h-12 rounded-xl bg-sky-50 text-sky-600 flex items-center justify-center mb-4">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h14M12 5l7 7-7 7"/>
+                    </svg>
+                </div>
+                <h3 class="font-heading font-semibold text-lg text-slate-900">Django + DRF Backend</h3>
+                <p class="mt-2 text-sm text-slate-500 leading-relaxed">
+                    Main application backend handling authentication, parking lots, reservation workflows, and REST endpoints.
+                </p>
+                <div class="mt-4 pt-4 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500 font-mono">
+                    <span>Port: 8000</span>
+                    <span class="text-emerald-600 font-semibold">Active</span>
+                </div>
+            </div>
+
+            <!-- Card 2: Oracle Database -->
+            <div class="bg-white rounded-2xl p-6 border border-slate-200/80 shadow-xs hover:shadow-md transition-shadow">
+                <div class="w-12 h-12 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center mb-4">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4"/>
+                    </svg>
+                </div>
+                <h3 class="font-heading font-semibold text-lg text-slate-900">Oracle Database</h3>
+                <p class="mt-2 text-sm text-slate-500 leading-relaxed">
+                    Enterprise relational database powered by modern <code class="text-xs bg-slate-100 px-1 py-0.5 rounded text-indigo-600">python-oracledb</code> and Django ORM.
+                </p>
+                <div class="mt-4 pt-4 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500 font-mono">
+                    <span>Port: 1521</span>
+                    <span class="text-sky-600 font-semibold">Configured</span>
+                </div>
+            </div>
+
+            <!-- Card 3: Spring Boot Recommendation Engine -->
+            <div class="bg-white rounded-2xl p-6 border border-slate-200/80 shadow-xs hover:shadow-md transition-shadow">
+                <div class="w-12 h-12 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center mb-4">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/>
+                    </svg>
+                </div>
+                <h3 class="font-heading font-semibold text-lg text-slate-900">Recommendation Service</h3>
+                <p class="mt-2 text-sm text-slate-500 leading-relaxed">
+                    Dedicated Java 21 / Spring Boot service to score spots based on distance, rates, walking time, and availability.
+                </p>
+                <div class="mt-4 pt-4 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500 font-mono">
+                    <span>Port: 8081</span>
+                    <span class="text-amber-600 font-semibold">Maven / Java 21</span>
+                </div>
+            </div>
+
+            <!-- Card 4: Tailwind CSS UI -->
+            <div class="bg-white rounded-2xl p-6 border border-slate-200/80 shadow-xs hover:shadow-md transition-shadow">
+                <div class="w-12 h-12 rounded-xl bg-cyan-50 text-cyan-600 flex items-center justify-center mb-4">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01"/>
+                    </svg>
+                </div>
+                <h3 class="font-heading font-semibold text-lg text-slate-900">Tailwind CSS UI</h3>
+                <p class="mt-2 text-sm text-slate-500 leading-relaxed">
+                    Clean, responsive, glassmorphic styling integrated seamlessly with Django templates without heavy frontend bloat.
+                </p>
+                <div class="mt-4 pt-4 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500 font-mono">
+                    <span>Tailwind</span>
+                    <span class="text-emerald-600 font-semibold">Connected</span>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- System Architecture & Verification Section -->
+        <div id="architecture" class="mt-16 bg-white rounded-2xl p-8 border border-slate-200/80 shadow-xs">
+            <h2 class="font-heading text-2xl font-bold text-slate-900">Day 1 Foundation Overview</h2>
+            <p class="mt-2 text-sm text-slate-600">The project is initialized with clean separation of concerns and modular service architecture.</p>
+
+            <div class="mt-8 grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div class="p-5 rounded-xl bg-slate-50 border border-slate-200">
+                    <h4 class="font-heading font-semibold text-slate-800 text-base mb-3 flex items-center">
+                        <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 mr-2"></span>
+                        Django Backend Endpoints
+                    </h4>
+                    <ul class="space-y-2 text-sm text-slate-600">
+                        <li class="flex items-center justify-between">
+                            <span class="font-mono text-xs text-slate-800">GET /</span>
+                            <span class="text-xs text-slate-500">Landing Page (Template View)</span>
+                        </li>
+                        <li class="flex items-center justify-between">
+                            <span class="font-mono text-xs text-slate-800">GET /api/health/</span>
+                            <span class="text-xs text-emerald-600 font-semibold">{"status": "ok", "service": "django-backend"}</span>
+                        </li>
+                    </ul>
+                </div>
+
+                <div class="p-5 rounded-xl bg-slate-50 border border-slate-200">
+                    <h4 class="font-heading font-semibold text-slate-800 text-base mb-3 flex items-center">
+                        <span class="w-2.5 h-2.5 rounded-full bg-sky-500 mr-2"></span>
+                        Java Spring Boot Endpoint
+                    </h4>
+                    <ul class="space-y-2 text-sm text-slate-600">
+                        <li class="flex items-center justify-between">
+                            <span class="font-mono text-xs text-slate-800">GET :8081/api/recommendation/health</span>
+                            <span class="text-xs text-emerald-600 font-semibold">{"status": "ok", "service": "recommendation-service"}</span>
+                        </li>
+                        <li class="flex items-center justify-between">
+                            <span class="text-xs text-slate-500">Target Role:</span>
+                            <span class="text-xs text-indigo-600 font-medium">Smart Scoring & Ranking Engine</span>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- 8-Day Roadmap Section -->
+        <div id="roadmap" class="mt-16">
+            <div class="text-center mb-10">
+                <h2 class="font-heading text-2xl sm:text-3xl font-bold text-slate-900">8-Day Development Roadmap</h2>
+                <p class="mt-2 text-sm text-slate-600">Iterative delivery plan for the Smart Parking Availability Platform</p>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div class="p-4 rounded-xl bg-sky-50 border-2 border-sky-300">
+                    <span class="text-xs font-bold uppercase tracking-wider text-sky-700">Day 1 (Current)</span>
+                    <h4 class="font-semibold text-slate-900 mt-1">Project Setup</h4>
+                    <p class="text-xs text-slate-600 mt-1">Django, DRF, Oracle DB, Tailwind, Spring Boot & Maven foundation.</p>
+                </div>
+                <div class="p-4 rounded-xl bg-white border border-slate-200">
+                    <span class="text-xs font-bold uppercase tracking-wider text-slate-400">Day 2</span>
+                    <h4 class="font-semibold text-slate-700 mt-1">Authentication & UI</h4>
+                    <p class="text-xs text-slate-500 mt-1">User signup/login, roles, driver dashboard layout.</p>
+                </div>
+                <div class="p-4 rounded-xl bg-white border border-slate-200">
+                    <span class="text-xs font-bold uppercase tracking-wider text-slate-400">Day 3</span>
+                    <h4 class="font-semibold text-slate-700 mt-1">Parking Locations & Map</h4>
+                    <p class="text-xs text-slate-500 mt-1">Parking lot discovery, geospatial search, interactive map.</p>
+                </div>
+                <div class="p-4 rounded-xl bg-white border border-slate-200">
+                    <span class="text-xs font-bold uppercase tracking-wider text-slate-400">Day 4</span>
+                    <h4 class="font-semibold text-slate-700 mt-1">Parking Availability</h4>
+                    <p class="text-xs text-slate-500 mt-1">Real-time spot tracking, vacancy counters, live status.</p>
+                </div>
+                <div class="p-4 rounded-xl bg-white border border-slate-200">
+                    <span class="text-xs font-bold uppercase tracking-wider text-slate-400">Day 5</span>
+                    <h4 class="font-semibold text-slate-700 mt-1">ML Availability Prediction</h4>
+                    <p class="text-xs text-slate-500 mt-1">Historical occupancy forecasting model and pipeline.</p>
+                </div>
+                <div class="p-4 rounded-xl bg-white border border-slate-200">
+                    <span class="text-xs font-bold uppercase tracking-wider text-slate-400">Day 6</span>
+                    <h4 class="font-semibold text-slate-700 mt-1">Smart Recommendation</h4>
+                    <p class="text-xs text-slate-500 mt-1">Spring Boot recommendation engine integration & slot reservations.</p>
+                </div>
+                <div class="p-4 rounded-xl bg-white border border-slate-200">
+                    <span class="text-xs font-bold uppercase tracking-wider text-slate-400">Day 7</span>
+                    <h4 class="font-semibold text-slate-700 mt-1">Parking Sessions & AI</h4>
+                    <p class="text-xs text-slate-500 mt-1">Active parking timers, fee calculator, notifications, AI assistant.</p>
+                </div>
+                <div class="p-4 rounded-xl bg-white border border-slate-200">
+                    <span class="text-xs font-bold uppercase tracking-wider text-slate-400">Day 8</span>
+                    <h4 class="font-semibold text-slate-700 mt-1">Dashboard & Deployment</h4>
+                    <p class="text-xs text-slate-500 mt-1">Analytics dashboards, comprehensive testing, Docker & production deployment.</p>
+                </div>
+            </div>
+        </div>
+
+    </div>
+</div>
+{% endblock %}
