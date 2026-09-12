@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - SmartPark</title>
+    <link rel="stylesheet" th:href="@{/css/style.css}">
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <style>
+        body { display: flex; align-items: center; justify-content: center; min-height: 100vh; }
+        .auth-card { width: 100%; max-width: 440px; }
+    </style>
+</head>
+<body>
+
+<div class="auth-card">
+    <!-- Logo Header -->
+    <div style="text-align: center; margin-bottom: 2.5rem;">
+        <a th:href="@{/}" style="display: inline-flex; align-items: center; gap: 0.75rem; text-decoration: none; color: #fff; font-family: 'Outfit', sans-serif; font-size: 1.6rem; font-weight: 800; margin-bottom: 1rem;">
+            <div class="logo-badge">P</div>
+            Smart<span class="gradient-text">Park</span>
+        </a>
+        <h2 style="font-size: 1.6rem; margin-bottom: 0.35rem;">Welcome Back</h2>
+        <p style="color: var(--text-muted); font-size: 0.95rem;">Sign in to manage your parking reservations</p>
+    </div>
+
+    <div class="glass-panel" style="padding: 2.25rem;">
+
+        <div th:if="${successMessage}" class="alert alert-success" style="margin-bottom: 1.25rem;">
+            <i class="ph ph-check-circle"></i> <span th:text="${successMessage}"></span>
+        </div>
+        <div th:if="${errorMessage}" class="alert alert-danger" style="margin-bottom: 1.25rem;">
+            <i class="ph ph-warning-circle"></i> <span th:text="${errorMessage}"></span>
+        </div>
+        <div th:if="${param.registered}" class="alert alert-success" style="margin-bottom: 1.25rem;">
+            <i class="ph ph-check-circle"></i> Account created! Please log in.
+        </div>
+
+        <form th:action="@{/login}" method="post">
+
+            <div style="margin-bottom: 1.25rem;">
+                <label for="username" style="display: block; font-size: 0.85rem; font-weight: 600; margin-bottom: 0.4rem; color: var(--text-muted);">
+                    Username
+                </label>
+                <div style="position: relative;">
+                    <i class="ph ph-user" style="position: absolute; left: 0.9rem; top: 50%; transform: translateY(-50%); color: var(--text-dim); font-size: 1.1rem;"></i>
+                    <input type="text" id="username" name="username" class="form-input" style="padding-left: 2.5rem;" placeholder="your_username" required autocomplete="username">
+                </div>
+            </div>
+
+            <div style="margin-bottom: 1.75rem;">
+                <label for="password" style="display: block; font-size: 0.85rem; font-weight: 600; margin-bottom: 0.4rem; color: var(--text-muted);">
+                    Password
+                </label>
+                <div style="position: relative;">
+                    <i class="ph ph-lock" style="position: absolute; left: 0.9rem; top: 50%; transform: translateY(-50%); color: var(--text-dim); font-size: 1.1rem;"></i>
+                    <input type="password" id="password" name="password" class="form-input" style="padding-left: 2.5rem;" placeholder="••••••••" required autocomplete="current-password">
+                </div>
+            </div>
+
+            <button type="submit" class="btn-primary" style="width: 100%; justify-content: center; padding: 0.85rem; font-size: 1rem;">
+                <i class="ph ph-sign-in"></i> Sign In
+            </button>
+        </form>
+
+        <!-- Demo Credentials Box -->
+        <div style="margin-top: 1.75rem; padding: 1rem; background: rgba(56, 189, 248, 0.05); border: 1px solid rgba(56, 189, 248, 0.15); border-radius: 0.65rem;">
+            <p style="font-size: 0.8rem; font-weight: 700; color: #38bdf8; margin-bottom: 0.6rem; text-transform: uppercase; letter-spacing: 0.05em;">
+                <i class="ph ph-info"></i> Demo Credentials
+            </p>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; font-size: 0.85rem;">
+                <div style="color: var(--text-muted);">
+                    <strong style="color: #fff; display: block;">Driver Account</strong>
+                    driver / password123
+                </div>
+                <div style="color: var(--text-muted);">
+                    <strong style="color: #fff; display: block;">Admin Account</strong>
+                    admin / admin123
+                </div>
+            </div>
+        </div>
+
+        <div style="text-align: center; margin-top: 1.5rem; font-size: 0.9rem; color: var(--text-muted);">
+            No account yet?
+            <a th:href="@{/register}" style="color: #38bdf8; font-weight: 600; text-decoration: none;">Register here &rarr;</a>
+        </div>
+
+    </div>
+</div>
+
+</body>
+</html>

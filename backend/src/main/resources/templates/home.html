@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org" th:replace="~{layout/base :: html}">
+<head>
+    <title>Smart Parking Availability Platform</title>
+</head>
+<body>
+
+<div th:fragment="content">
+    <!-- Hero Section -->
+    <section style="text-align: center; padding: 3rem 1rem 4rem; max-width: 900px; margin: 0 auto;">
+        <div class="badge badge-blue" style="margin-bottom: 1.25rem;">
+            <i class="ph ph-lightning"></i> Real-Time Urban Mobility Platform &bull; Java 21 Powered
+        </div>
+        <h1 style="font-size: 3.5rem; line-height: 1.15; margin-bottom: 1.25rem;">
+            Eliminate The Guesswork in <br><span class="gradient-text">City Parking</span>
+        </h1>
+        <p style="color: var(--text-muted); font-size: 1.2rem; max-width: 720px; margin: 0 auto 2.5rem;">
+            Locate nearby parking in real-time, compare hourly rates and walking times, secure guaranteed 15-minute slot holds, and track your active parking sessions effortlessly.
+        </p>
+
+        <!-- Quick Search Bar -->
+        <form th:action="@{/lots}" method="get" style="display: flex; gap: 0.75rem; max-width: 650px; margin: 0 auto; background: rgba(15, 23, 42, 0.85); padding: 0.5rem; border-radius: 1rem; border: 1px solid var(--glass-border); box-shadow: 0 10px 30px rgba(0,0,0,0.5);">
+            <div style="position: relative; flex: 1; display: flex; align-items: center;">
+                <i class="ph ph-magnifying-glass" style="position: absolute; left: 1rem; color: var(--text-dim); font-size: 1.2rem;"></i>
+                <input type="text" name="search" placeholder="Search by garage name, district or street..." class="form-input" style="border: none; padding-left: 2.75rem; background: transparent;">
+            </div>
+            <button type="submit" class="btn-primary" style="padding: 0.75rem 1.75rem;">
+                <i class="ph ph-magnifying-glass-bold"></i> Search
+            </button>
+        </form>
+    </section>
+
+    <!-- Live Platform Telemetry Bar -->
+    <section class="glass-panel" style="padding: 2rem; margin-bottom: 3.5rem;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 1rem;">
+            <div>
+                <h3 style="font-size: 1.3rem;">Live Network Telemetry</h3>
+                <p style="color: var(--text-muted); font-size: 0.9rem;">Real-time slot sensors connected across participating garages</p>
+            </div>
+            <div style="display: flex; gap: 1rem;">
+                <span class="badge badge-green"><i class="ph ph-broadcast"></i> Sensors Online</span>
+                <span class="badge badge-blue"><i class="ph ph-database"></i> Oracle DB Synced</span>
+            </div>
+        </div>
+
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1.5rem;">
+            <div style="background: rgba(255,255,255,0.03); border: 1px solid var(--glass-border); border-radius: 0.75rem; padding: 1.25rem;">
+                <span style="color: var(--text-muted); font-size: 0.85rem; font-weight: 600;">ACTIVE LOTS</span>
+                <div style="font-size: 2.2rem; font-weight: 800; color: #fff; margin-top: 0.25rem;" th:text="${lots.size()}">4</div>
+                <div style="color: #38bdf8; font-size: 0.85rem; margin-top: 0.25rem;"><i class="ph ph-buildings"></i> Monitored Facilities</div>
+            </div>
+
+            <div style="background: rgba(255,255,255,0.03); border: 1px solid var(--glass-border); border-radius: 0.75rem; padding: 1.25rem;">
+                <span style="color: var(--text-muted); font-size: 0.85rem; font-weight: 600;">AVAILABLE SPOTS</span>
+                <div style="font-size: 2.2rem; font-weight: 800; color: #34d399; margin-top: 0.25rem;" th:text="${availableSpots}">45</div>
+                <div style="color: #34d399; font-size: 0.85rem; margin-top: 0.25rem;"><i class="ph ph-check-circle"></i> Ready to Reserve</div>
+            </div>
+
+            <div style="background: rgba(255,255,255,0.03); border: 1px solid var(--glass-border); border-radius: 0.75rem; padding: 1.25rem;">
+                <span style="color: var(--text-muted); font-size: 0.85rem; font-weight: 600;">OCCUPIED SPOTS</span>
+                <div style="font-size: 2.2rem; font-weight: 800; color: #fb7185; margin-top: 0.25rem;" th:text="${occupiedSpots}">27</div>
+                <div style="color: #fb7185; font-size: 0.85rem; margin-top: 0.25rem;"><i class="ph ph-car-profile"></i> Currently In Use</div>
+            </div>
+
+            <div style="background: rgba(255,255,255,0.03); border: 1px solid var(--glass-border); border-radius: 0.75rem; padding: 1.25rem;">
+                <span style="color: var(--text-muted); font-size: 0.85rem; font-weight: 600;">OCCUPANCY RATE</span>
+                <div style="font-size: 2.2rem; font-weight: 800; color: #fbbf24; margin-top: 0.25rem;" th:text="${#numbers.formatDecimal(occupancyRate, 1, 1) + '%'}">37.5%</div>
+                <div style="color: #fbbf24; font-size: 0.85rem; margin-top: 0.25rem;"><i class="ph ph-chart-pie"></i> Network Capacity</div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Platform Features -->
+    <section style="margin-bottom: 4rem;">
+        <h2 style="font-size: 2rem; margin-bottom: 2rem; text-align: center;">Enterprise Mobility Features</h2>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.75rem;">
+            
+            <div class="glass-panel" style="padding: 2rem;">
+                <div style="background: rgba(56, 189, 248, 0.15); width: 50px; height: 50px; border-radius: 12px; display: flex; align-items: center; justify-content: center; margin-bottom: 1.25rem;">
+                    <i class="ph ph-sparkle" style="font-size: 1.75rem; color: #38bdf8;"></i>
+                </div>
+                <h3 style="font-size: 1.25rem; margin-bottom: 0.5rem;">Multi-Criteria AI Scoring</h3>
+                <p style="color: var(--text-muted); font-size: 0.95rem;">
+                    Evaluates distance, price, vacancy rate, and EV amenities to rank optimal parking destinations in milliseconds.
+                </p>
+            </div>
+
+            <div class="glass-panel" style="padding: 2rem;">
+                <div style="background: rgba(16, 185, 129, 0.15); width: 50px; height: 50px; border-radius: 12px; display: flex; align-items: center; justify-content: center; margin-bottom: 1.25rem;">
+                    <i class="ph ph-shield-check" style="font-size: 1.75rem; color: #34d399;"></i>
+                </div>
+                <h3 style="font-size: 1.25rem; margin-bottom: 0.5rem;">Guaranteed 15-Min Hold</h3>
+                <p style="color: var(--text-muted); font-size: 0.95rem;">
+                    Automated hold timers lock your designated spot while you drive, preventing spot sniping and traffic circling.
+                </p>
+            </div>
+
+            <div class="glass-panel" style="padding: 2rem;">
+                <div style="background: rgba(245, 158, 11, 0.15); width: 50px; height: 50px; border-radius: 12px; display: flex; align-items: center; justify-content: center; margin-bottom: 1.25rem;">
+                    <i class="ph ph-clock-countdown" style="font-size: 1.75rem; color: #fbbf24;"></i>
+                </div>
+                <h3 style="font-size: 1.25rem; margin-bottom: 0.5rem;">Active Session Metering</h3>
+                <p style="color: var(--text-muted); font-size: 0.95rem;">
+                    Real-time parking session timer with transparent billing breakdowns and instant automated check-out.
+                </p>
+            </div>
+
+            <div class="glass-panel" style="padding: 2rem;">
+                <div style="background: rgba(168, 85, 247, 0.15); width: 50px; height: 50px; border-radius: 12px; display: flex; align-items: center; justify-content: center; margin-bottom: 1.25rem;">
+                    <i class="ph ph-charging-station" style="font-size: 1.75rem; color: #c084fc;"></i>
+                </div>
+                <h3 style="font-size: 1.25rem; margin-bottom: 0.5rem;">EV & Accessibility Filters</h3>
+                <p style="color: var(--text-muted); font-size: 0.95rem;">
+                    Direct filtering for Level 2 & DC Fast EV charging stations, covered garages, and handicap-accessible stalls.
+                </p>
+            </div>
+
+        </div>
+    </section>
+
+    <!-- Top Parking Lots Preview -->
+    <section>
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.75rem;">
+            <div>
+                <h2 style="font-size: 1.8rem;">Featured Parking Lots</h2>
+                <p style="color: var(--text-muted);">Explore live availability in top metropolitan hubs</p>
+            </div>
+            <a th:href="@{/lots}" class="btn-secondary">View All Garages &rarr;</a>
+        </div>
+
+        <div class="grid-cards">
+            <div th:each="lot : ${lots}" class="glass-panel lot-card">
+                <div>
+                    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.75rem;">
+                        <h3 th:text="${lot.name}" style="font-size: 1.25rem; font-weight: 700;">Central Garage</h3>
+                        <span class="badge" th:classappend="${lot.availableSpotsCount > 5} ? 'badge-green' : 'badge-amber'" 
+                              th:text="${lot.availableSpotsCount + ' Spots Free'}">12 Spots Free</span>
+                    </div>
+                    
+                    <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 1rem;">
+                        <i class="ph ph-map-pin" style="color: #38bdf8;"></i> <span th:text="${lot.address}">Colombo 03</span>
+                    </p>
+
+                    <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 1rem;">
+                        <span th:if="${lot.hasEvCharging}" class="badge badge-purple"><i class="ph ph-lightning"></i> EV Charging</span>
+                        <span th:if="${lot.isCovered}" class="badge badge-blue"><i class="ph ph-umbrella"></i> Covered</span>
+                        <span th:if="${lot.hasCctvSecurity}" class="badge badge-green"><i class="ph ph-video-camera"></i> CCTV</span>
+                    </div>
+
+                    <!-- Occupancy Bar -->
+                    <div class="progress-bar-bg">
+                        <div class="progress-bar-fill" 
+                             th:style="'width: ' + ${lot.occupancyRate} + '%; background: ' + (${lot.occupancyRate > 80} ? '#fb7185' : '#34d399')"></div>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; font-size: 0.8rem; color: var(--text-dim); margin-bottom: 1.25rem;">
+                        <span th:text="${lot.totalCapacity - lot.availableSpotsCount} + ' / ' + ${lot.totalCapacity} + ' Occupied'"></span>
+                        <span th:text="${#numbers.formatDecimal(lot.occupancyRate, 1, 0) + '% Occupied'}"></span>
+                    </div>
+                </div>
+
+                <div style="display: flex; justify-content: space-between; align-items: center; border-top: 1px solid var(--glass-border); padding-top: 1rem;">
+                    <div>
+                        <span style="font-size: 1.3rem; font-weight: 800; color: #fff;" th:text="'LKR ' + ${lot.hourlyRate}">LKR 150</span>
+                        <span style="color: var(--text-dim); font-size: 0.85rem;"> / hour</span>
+                    </div>
+                    <a th:href="@{'/lots/' + ${lot.id}}" class="btn-primary" style="padding: 0.5rem 1.1rem; font-size: 0.9rem;">
+                        Select Spot &rarr;
+                    </a>
+                </div>
+            </div>
+        </div>
+    </section>
+
+</div>
+
+</body>
+</html>

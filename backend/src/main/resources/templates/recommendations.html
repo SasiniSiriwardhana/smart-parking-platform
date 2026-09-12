@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org" th:replace="~{layout/base :: html}">
+<head>
+    <title>Smart AI Parking Recommendations - SmartPark</title>
+</head>
+<body>
+
+<div th:fragment="content">
+
+    <div style="text-align: center; max-width: 800px; margin: 0 auto 2.5rem;">
+        <div class="badge badge-purple" style="margin-bottom: 1rem;">
+            <i class="ph ph-sparkle"></i> Multi-Factor Algorithmic Ranking Engine
+        </div>
+        <h1 style="font-size: 2.5rem; margin-bottom: 0.75rem;">Intelligent Parking Recommendations</h1>
+        <p style="color: var(--text-muted); font-size: 1.05rem;">
+            Our Java scoring engine dynamically weights physical proximity, walking time, real-time vacancy rates, and hourly pricing to match you with the optimal spot.
+        </p>
+    </div>
+
+    <!-- Recommendation Filters Form -->
+    <div class="glass-panel" style="padding: 2rem; margin-bottom: 3rem;">
+        <form th:action="@{/recommendations}" method="get">
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1.25rem; margin-bottom: 1.5rem;">
+                
+                <!-- Preset Destinations -->
+                <div>
+                    <label style="display: block; font-size: 0.85rem; font-weight: 600; margin-bottom: 0.4rem; color: var(--text-muted);">
+                        Quick Pick Destination
+                    </label>
+                    <select class="form-select" onchange="setCoordinates(this.value)">
+                        <option value="6.9271,79.8612">Colombo City Center (6.9271, 79.8612)</option>
+                        <option value="6.9056,79.8512">Colpetty Metro Junction (6.9056, 79.8512)</option>
+                        <option value="6.8920,79.8550">Bambalapitiya Coast (6.8920, 79.8550)</option>
+                        <option value="6.9319,79.8475">Colombo Fort / Cinnamon (6.9319, 79.8475)</option>
+                    </select>
+                </div>
+
+                <!-- Destination Lat -->
+                <div>
+                    <label style="display: block; font-size: 0.85rem; font-weight: 600; margin-bottom: 0.4rem; color: var(--text-muted);">
+                        Destination Latitude
+                    </label>
+                    <input type="number" step="0.0001" name="lat" id="latInput" th:value="${recommendationRequest.destinationLatitude}" class="form-input" required>
+                </div>
+
+                <!-- Destination Lon -->
+                <div>
+                    <label style="display: block; font-size: 0.85rem; font-weight: 600; margin-bottom: 0.4rem; color: var(--text-muted);">
+                        Destination Longitude
+                    </label>
+                    <input type="number" step="0.0001" name="lon" id="lonInput" th:value="${recommendationRequest.destinationLongitude}" class="form-input" required>
+                </div>
+
+                <!-- Preference Mode -->
+                <div>
+                    <label style="display: block; font-size: 0.85rem; font-weight: 600; margin-bottom: 0.4rem; color: var(--text-muted);">
+                        Optimization Preference
+                    </label>
+                    <select name="preference" class="form-select">
+                        <option value="BALANCED" th:selected="${recommendationRequest.preference == 'BALANCED'}">Balanced (Default)</option>
+                        <option value="CHEAPEST" th:selected="${recommendationRequest.preference == 'CHEAPEST'}">Cheapest Pricing</option>
+                        <option value="CLOSEST" th:selected="${recommendationRequest.preference == 'CLOSEST'}">Closest Walking Distance</option>
+                        <option value="HIGHEST_AVAILABILITY" th:selected="${recommendationRequest.preference == 'HIGHEST_AVAILABILITY'}">Highest Available Slots</option>
+                    </select>
+                </div>
+
+            </div>
+
+            <!-- Checkboxes & Submit -->
+            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; border-top: 1px solid var(--glass-border); padding-top: 1.25rem;">
+                <div style="display: flex; gap: 1.5rem; align-items: center;">
+                    <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; font-size: 0.9rem;">
+                        <input type="checkbox" name="ev" value="true" th:checked="${recommendationRequest.requiresEv}">
+                        <span>Require EV Charging</span>
+                    </label>
+                    <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; font-size: 0.9rem;">
+                        <input type="checkbox" name="covered" value="true" th:checked="${recommendationRequest.requiresCovered}">
+                        <span>Require Covered Parking</span>
+                    </label>
+                </div>
+
+                <button type="submit" class="btn-primary" style="padding: 0.65rem 1.75rem;">
+                    <i class="ph ph-sparkle-bold"></i> Run Smart Ranking
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <!-- Ranked Results -->
+    <div>
+        <h2 style="font-size: 1.6rem; margin-bottom: 1.5rem;">
+            Ranked Recommendations (<span th:text="${recommendations.size()}">0</span> Facilities Found)
+        </h2>
+
+        <div th:if="${recommendations.empty}" class="glass-panel" style="text-align: center; padding: 4rem 2rem;">
+            <i class="ph ph-magnifying-glass" style="font-size: 3rem; color: var(--text-dim); margin-bottom: 1rem;"></i>
+            <h3 style="font-size: 1.3rem;">No Facilities Match Your Exact Criteria</h3>
+            <p style="color: var(--text-muted);">Try deselecting amenity requirements or expanding your radius.</p>
+        </div>
+
+        <div style="display: flex; flex-direction: column; gap: 1.25rem;">
+            <div th:each="rec, iterStat : ${recommendations}" class="glass-panel" style="padding: 1.75rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1.5rem;">
+                
+                <div style="display: flex; gap: 1.5rem; align-items: center;">
+                    <!-- Rank Badge -->
+                    <div style="background: rgba(255,255,255,0.06); border: 1px solid var(--glass-border); width: 48px; height: 48px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.3rem; font-weight: 800; color: #38bdf8;">
+                        #<span th:text="${iterStat.count}">1</span>
+                    </div>
+
+                    <div>
+                        <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.35rem;">
+                            <h3 th:text="${rec.name}" style="font-size: 1.3rem;">Central Metro Hub</h3>
+                            <span class="badge badge-purple" th:text="${rec.matchBadge}">Best Value</span>
+                        </div>
+
+                        <p style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 0.65rem;">
+                            <i class="ph ph-map-pin" style="color: #38bdf8;"></i> <span th:text="${rec.address + ', ' + rec.city}"></span> &bull; 
+                            <i class="ph ph-person-simple-walk" style="color: #34d399;"></i> <strong th:text="${rec.estimatedWalkingMinutes} + ' mins walking'"></strong> (<span th:text="${rec.distanceKm} + ' km'"></span>)
+                        </p>
+
+                        <div style="display: flex; gap: 0.5rem; font-size: 0.78rem;">
+                            <span class="badge badge-green" th:text="${rec.availableSpots} + ' Slots Free'">12 Slots Free</span>
+                            <span th:if="${rec.hasEvCharging}" class="badge badge-blue">EV Charging</span>
+                            <span th:if="${rec.isCovered}" class="badge badge-amber">Covered Garage</span>
+                            <span style="color: var(--text-dim); padding: 0.3rem 0.5rem;" th:text="${rec.scoreRationale}"></span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Score and Action -->
+                <div style="display: flex; align-items: center; gap: 2.5rem;">
+                    <!-- Match Score Meter -->
+                    <div style="text-align: center;">
+                        <div style="font-size: 1.7rem; font-weight: 800; color: #34d399;" th:text="${rec.recommendationScore}">94.2</div>
+                        <div style="font-size: 0.75rem; color: var(--text-dim); text-transform: uppercase;">Match Score</div>
+                    </div>
+
+                    <div style="text-align: right;">
+                        <div style="font-size: 1.4rem; font-weight: 800; color: #fff;" th:text="'LKR ' + ${rec.hourlyRate}">LKR 150</div>
+                        <div style="font-size: 0.75rem; color: var(--text-dim); margin-bottom: 0.5rem;">per hour</div>
+                        <a th:href="@{'/lots/' + ${rec.lotId}}" class="btn-primary" style="padding: 0.5rem 1.25rem; font-size: 0.88rem;">
+                            Reserve Spot &rarr;
+                        </a>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<script>
+    function setCoordinates(value) {
+        const parts = value.split(',');
+        document.getElementById('latInput').value = parts[0].trim();
+        document.getElementById('lonInput').value = parts[1].trim();
+    }
+</script>
+
+</body>
+</html>

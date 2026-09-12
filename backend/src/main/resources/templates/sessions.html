@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org" th:replace="~{layout/base :: html}">
+<head>
+    <title>Active Parking Session - SmartPark</title>
+</head>
+<body>
+
+<div th:fragment="content">
+
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; flex-wrap: wrap; gap: 1rem;">
+        <div>
+            <h1 style="font-size: 2rem; margin-bottom: 0.35rem;">Parking Sessions</h1>
+            <p style="color: var(--text-muted);">Track your active session timer and billing in real-time</p>
+        </div>
+    </div>
+
+    <!-- Active Session Card -->
+    <div th:if="${activeSession != null}" class="glass-panel" style="padding: 2rem; margin-bottom: 2.5rem; border: 1px solid rgba(16, 185, 129, 0.3); box-shadow: 0 0 25px rgba(16, 185, 129, 0.1);">
+        <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 1.5rem;">
+            <div>
+                <div class="badge badge-green" style="margin-bottom: 0.75rem;"><i class="ph ph-broadcast"></i> Session Active — Timer Running</div>
+                <h2 th:text="${activeSession.parkingSpot.parkingLot.name}" style="font-size: 1.8rem;">Lot Name</h2>
+                <p style="color: var(--text-muted); margin-top: 0.35rem;">
+                    <i class="ph ph-car" style="color: #34d399;"></i>
+                    Spot <strong th:text="${activeSession.parkingSpot.spotNumber}" style="color: #fff;">A-01</strong> &bull;
+                    <span th:text="${activeSession.parkingSpot.floorLevel}">Floor 1</span>
+                </p>
+                <p style="color: var(--text-muted); font-size: 0.9rem; margin-top: 0.5rem;">
+                    <i class="ph ph-clock"></i>
+                    Checked In: <strong style="color: #fff;" th:text="${#temporals.format(activeSession.checkInTime, 'MMM dd, yyyy HH:mm:ss')}">Sep 12, 2026 10:00:00</strong>
+                </p>
+            </div>
+
+            <div style="display: flex; gap: 2.5rem; align-items: center;">
+                <!-- Live Duration Counter -->
+                <div style="text-align: center; background: rgba(255,255,255,0.04); border: 1px solid var(--glass-border); padding: 1.25rem 2rem; border-radius: 0.75rem;">
+                    <div style="color: var(--text-dim); font-size: 0.8rem; font-weight: 600; margin-bottom: 0.25rem;">ELAPSED TIME</div>
+                    <div id="elapsedTimer" style="font-size: 2.5rem; font-weight: 800; color: #34d399; font-family: 'Courier New', monospace;">00:00:00</div>
+                    <div style="color: var(--text-dim); font-size: 0.78rem;">HH:MM:SS</div>
+                </div>
+
+                <!-- Check-out button -->
+                <form th:action="@{'/sessions/' + ${activeSession.id} + '/stop'}" method="post">
+                    <button type="submit" class="btn-danger" style="padding: 1rem 1.5rem; font-size: 0.95rem; display: flex; align-items: center; gap: 0.5rem;">
+                        <i class="ph ph-stop-circle" style="font-size: 1.3rem;"></i>
+                        End Session &amp; Pay
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <div style="margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1px solid var(--glass-border); display: flex; gap: 2.5rem; flex-wrap: wrap;">
+            <div>
+                <div style="color: var(--text-dim); font-size: 0.78rem; font-weight: 600;">HOURLY RATE</div>
+                <div style="font-size: 1.15rem; font-weight: 700; color: #fff;" 
+                     th:text="'LKR ' + ${activeSession.parkingSpot.parkingLot.hourlyRate} + ' / hr'">LKR 150.00 / hr</div>
+            </div>
+            <div>
+                <div style="color: var(--text-dim); font-size: 0.78rem; font-weight: 600;">RUNNING ESTIMATE</div>
+                <div id="runningCost" style="font-size: 1.15rem; font-weight: 700; color: #34d399;">LKR 0.00</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- No Active Session -->
+    <div th:if="${activeSession == null}" class="glass-panel" style="text-align: center; padding: 3rem 2rem; margin-bottom: 2.5rem;">
+        <i class="ph ph-timer-slash" style="font-size: 3.5rem; color: var(--text-dim); margin-bottom: 1rem;"></i>
+        <h3 style="font-size: 1.35rem; margin-bottom: 0.5rem;">No Active Session</h3>
+        <p style="color: var(--text-muted); margin-bottom: 1.5rem;">Start a session from your confirmed reservation or directly at a parking spot.</p>
+        <a th:href="@{/reservations}" class="btn-primary"><i class="ph ph-ticket"></i> My Reservations</a>
+    </div>
+
+    <!-- Past Sessions Table -->
+    <div>
+        <h2 style="font-size: 1.5rem; margin-bottom: 1.25rem;">Session History</h2>
+
+        <div th:if="${sessions == null or sessions.empty}" class="glass-panel" style="text-align: center; padding: 2.5rem;">
+            <p style="color: var(--text-muted);">Your past parking sessions will appear here.</p>
+        </div>
+
+        <div th:if="${sessions != null and !sessions.empty}" class="glass-panel" style="overflow: hidden;">
+            <table style="width: 100%; border-collapse: collapse;">
+                <thead>
+                    <tr style="background: rgba(255, 255, 255, 0.04); text-align: left;">
+                        <th style="padding: 1rem; font-size: 0.8rem; text-transform: uppercase; color: var(--text-dim);">Parking Location</th>
+                        <th style="padding: 1rem; font-size: 0.8rem; text-transform: uppercase; color: var(--text-dim);">Spot</th>
+                        <th style="padding: 1rem; font-size: 0.8rem; text-transform: uppercase; color: var(--text-dim);">Check In</th>
+                        <th style="padding: 1rem; font-size: 0.8rem; text-transform: uppercase; color: var(--text-dim);">Duration</th>
+                        <th style="padding: 1rem; font-size: 0.8rem; text-transform: uppercase; color: var(--text-dim);">Amount</th>
+                        <th style="padding: 1rem; font-size: 0.8rem; text-transform: uppercase; color: var(--text-dim);">Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr th:each="s : ${sessions}" style="border-top: 1px solid var(--glass-border);">
+                        <td style="padding: 1rem;" th:text="${s.parkingSpot.parkingLot.name}">Lot Name</td>
+                        <td style="padding: 1rem; font-weight: 700; color: #38bdf8;" th:text="${s.parkingSpot.spotNumber}">A-01</td>
+                        <td style="padding: 1rem; color: var(--text-muted); font-size: 0.85rem;" th:text="${#temporals.format(s.checkInTime, 'MMM dd HH:mm')}">Sep 12 10:00</td>
+                        <td style="padding: 1rem;" th:text="${s.durationMinutes != null ? s.durationMinutes + ' mins' : 'Active'}">45 mins</td>
+                        <td style="padding: 1rem; font-weight: 700;" th:text="${s.calculatedAmount != null ? 'LKR ' + s.calculatedAmount : '—'}">LKR 150.00</td>
+                        <td style="padding: 1rem;">
+                            <span class="badge" th:classappend="${s.status.name() == 'ACTIVE'} ? 'badge-green' : 'badge-blue'" 
+                                  th:text="${s.status.name()}">COMPLETED</span>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+</div>
+
+<script th:if="${activeSession != null}" th:inline="javascript">
+    const checkInTime = /*[[${#temporals.format(activeSession.checkInTime, 'yyyy-MM-dd\'T\'HH:mm:ss')}]]*/ '2026-09-12T10:00:00';
+    const hourlyRate = /*[[${activeSession.parkingSpot.parkingLot.hourlyRate}]]*/ 150.0;
+
+    const startTime = new Date(checkInTime);
+
+    function updateTimer() {
+        const now = new Date();
+        const elapsedMs = now - startTime;
+
+        if (elapsedMs < 0) return;
+
+        const hours = Math.floor(elapsedMs / 3600000);
+        const minutes = Math.floor((elapsedMs % 3600000) / 60000);
+        const seconds = Math.floor((elapsedMs % 60000) / 1000);
+
+        document.getElementById('elapsedTimer').textContent =
+            String(hours).padStart(2, '0') + ':' +
+            String(minutes).padStart(2, '0') + ':' +
+            String(seconds).padStart(2, '0');
+
+        const billableHours = Math.ceil(elapsedMs / 3600000) || 1;
+        const runningCost = (billableHours * hourlyRate).toFixed(2);
+        document.getElementById('runningCost').textContent = 'LKR ' + runningCost;
+    }
+
+    setInterval(updateTimer, 1000);
+    updateTimer();
+</script>
+
+</body>
+</html>

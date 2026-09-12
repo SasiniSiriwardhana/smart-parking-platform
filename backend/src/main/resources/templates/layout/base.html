@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title th:text="${pageTitle != null ? pageTitle + ' - SmartPark' : 'Smart Parking Platform'}">Smart Parking Platform</title>
+    <link rel="stylesheet" th:href="@{/css/style.css}">
+    <!-- Phosphor Icons for modern sleek icons -->
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+</head>
+<body>
+
+    <!-- Modern Glass Navbar -->
+    <nav class="glass-nav">
+        <div class="nav-container">
+            <a th:href="@{/}" class="brand-logo">
+                <div class="logo-badge">P</div>
+                <span>Smart<span class="gradient-text">Park</span></span>
+            </a>
+
+            <ul class="nav-links">
+                <li><a th:href="@{/}" class="nav-link"><i class="ph ph-house"></i> Home</a></li>
+                <li><a th:href="@{/lots}" class="nav-link"><i class="ph ph-compass"></i> Explore Lots</a></li>
+                <li><a th:href="@{/recommendations}" class="nav-link"><i class="ph ph-sparkle"></i> Smart AI Ranking</a></li>
+                
+                <li sec:authorize="isAuthenticated()">
+                    <a th:href="@{/reservations}" class="nav-link"><i class="ph ph-ticket"></i> My Reservations</a>
+                </li>
+                <li sec:authorize="isAuthenticated()">
+                    <a th:href="@{/sessions}" class="nav-link"><i class="ph ph-timer"></i> Active Session</a>
+                </li>
+            </ul>
+
+            <div style="display: flex; align-items: center; gap: 1rem;">
+                <div sec:authorize="isAnonymous()" style="display: flex; gap: 0.75rem;">
+                    <a th:href="@{/login}" class="btn-secondary"><i class="ph ph-sign-in"></i> Log In</a>
+                    <a th:href="@{/register}" class="btn-primary"><i class="ph ph-user-plus"></i> Register</a>
+                </div>
+
+                <div sec:authorize="isAuthenticated()" style="display: flex; align-items: center; gap: 1rem;">
+                    <span style="color: var(--text-muted); font-size: 0.9rem;">
+                        <i class="ph ph-user-circle" style="font-size: 1.2rem; vertical-align: middle;"></i>
+                        <span sec:authentication="name" style="font-weight: 600; color: #fff;"></span>
+                    </span>
+                    <form th:action="@{/logout}" method="post" style="display: inline;">
+                        <button type="submit" class="btn-secondary" style="padding: 0.4rem 0.8rem; font-size: 0.85rem;">
+                            <i class="ph ph-sign-out"></i> Logout
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Global Container & Notification Messages -->
+    <main class="container">
+        <div th:if="${successMessage}" class="alert alert-success">
+            <i class="ph ph-check-circle" style="font-size: 1.4rem;"></i>
+            <span th:text="${successMessage}"></span>
+        </div>
+        <div th:if="${errorMessage}" class="alert alert-danger">
+            <i class="ph ph-warning-circle" style="font-size: 1.4rem;"></i>
+            <span th:text="${errorMessage}"></span>
+        </div>
+
+        <div th:replace="${content}"></div>
+    </main>
+
+    <!-- Modern Footer -->
+    <footer>
+        <div style="max-width: 1280px; margin: 0 auto; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+            <div>
+                <strong>Smart Parking Availability Platform</strong> &bull; Java 21 LTS & Spring Boot 3.3 &bull; Oracle Database
+            </div>
+            <div style="display: flex; gap: 1.5rem;">
+                <a th:href="@{/api/health}" target="_blank" style="color: var(--text-dim); text-decoration: none;">System API Diagnostics</a>
+                <a th:href="@{/lots}" style="color: var(--text-dim); text-decoration: none;">Garages</a>
+                <a th:href="@{/recommendations}" style="color: var(--text-dim); text-decoration: none;">AI Scoring Engine</a>
+            </div>
+        </div>
+    </footer>
+
+</body>
+</html>

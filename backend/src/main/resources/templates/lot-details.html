@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org" th:replace="~{layout/base :: html}">
+<head>
+    <title th:text="${lot.name + ' - Live Spot Grid'}">Parking Lot Details</title>
+</head>
+<body>
+
+<div th:fragment="content">
+
+    <div style="margin-bottom: 1.5rem;">
+        <a th:href="@{/lots}" style="color: var(--text-muted); text-decoration: none; font-size: 0.9rem;">
+            &larr; Back to Parking Lots
+        </a>
+    </div>
+
+    <!-- Lot Header Summary -->
+    <div class="glass-panel" style="padding: 2rem; margin-bottom: 2rem;">
+        <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 1.5rem;">
+            <div>
+                <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.5rem;">
+                    <h1 th:text="${lot.name}" style="font-size: 2.2rem;">Central Metro Hub</h1>
+                    <span class="badge badge-green"><i class="ph ph-broadcast"></i> Live Monitoring</span>
+                </div>
+                <p style="color: var(--text-muted); font-size: 1rem; margin-bottom: 1rem;">
+                    <i class="ph ph-map-pin" style="color: #38bdf8;"></i> <span th:text="${lot.address + ', ' + lot.city}">100 Galle Road</span>
+                </p>
+                <div style="display: flex; gap: 0.75rem; flex-wrap: wrap;">
+                    <span th:if="${lot.hasEvCharging}" class="badge badge-purple"><i class="ph ph-lightning"></i> EV Charging</span>
+                    <span th:if="${lot.isCovered}" class="badge badge-blue"><i class="ph ph-umbrella"></i> Covered Facility</span>
+                    <span th:if="${lot.hasCctvSecurity}" class="badge badge-green"><i class="ph ph-video-camera"></i> CCTV Surveillance</span>
+                    <span th:if="${lot.hasHandicapAccess}" class="badge badge-amber"><i class="ph ph-wheelchair"></i> Handicap Friendly</span>
+                </div>
+            </div>
+
+            <div style="text-align: right; background: rgba(255, 255, 255, 0.03); border: 1px solid var(--glass-border); padding: 1.25rem 1.75rem; border-radius: 0.75rem;">
+                <div style="color: var(--text-dim); font-size: 0.85rem; font-weight: 600;">HOURLY TARIFF</div>
+                <div style="font-size: 2rem; font-weight: 800; color: #38bdf8;" th:text="'LKR ' + ${lot.hourlyRate}">LKR 150.00</div>
+                <div style="color: var(--text-muted); font-size: 0.85rem;" th:text="${lot.availableSpotsCount + ' of ' + lot.totalCapacity + ' Available'}">14 of 20 Available</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Visual Grid & Booking Container -->
+    <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 2rem;">
+        
+        <!-- Spot Visual Grid -->
+        <div class="glass-panel" style="padding: 2rem;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 1rem;">
+                <h3 style="font-size: 1.35rem;"><i class="ph ph-squares-four"></i> Real-Time Slot Grid</h3>
+                
+                <!-- Legend -->
+                <div style="display: flex; gap: 0.75rem; font-size: 0.8rem;">
+                    <span class="badge badge-green"><i class="ph ph-check"></i> Available</span>
+                    <span class="badge badge-red"><i class="ph ph-x"></i> Occupied</span>
+                    <span class="badge badge-amber"><i class="ph ph-clock"></i> Hold / Reserved</span>
+                </div>
+            </div>
+
+            <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 1.5rem;">
+                Click on any green spot to select it for your 15-minute guaranteed hold reservation.
+            </p>
+
+            <div class="spot-grid">
+                <div th:each="spot : ${spots}" 
+                     class="spot-box"
+                     th:classappend="${spot.isOccupied} ? 'spot-occupied' : (${spot.isReserved} ? 'spot-reserved' : 'spot-free')"
+                     th:attr="onclick=${!spot.isOccupied && !spot.isReserved} ? 'selectSpot(' + ${spot.id} + ', \'' + ${spot.spotNumber} + '\', \'' + ${spot.spotType} + '\')' : null">
+                    
+                    <div style="font-weight: 800; font-size: 1.1rem;" th:text="${spot.spotNumber}">L1-01</div>
+                    <div style="font-size: 0.7rem; opacity: 0.85;" th:text="${spot.floorLevel}">Floor 1</div>
+                    
+                    <!-- Spot Type Icon -->
+                    <div style="font-size: 1.1rem; margin-top: 0.2rem;">
+                        <i th:if="${spot.spotType.name() == 'EV_CHARGING'}" class="ph ph-charging-station" style="color: #c084fc;" title="EV Charging"></i>
+                        <i th:if="${spot.spotType.name() == 'HANDICAP'}" class="ph ph-wheelchair" style="color: #fbbf24;" title="Accessible"></i>
+                        <i th:if="${spot.spotType.name() == 'COMPACT'}" class="ph ph-car-profile" style="color: #38bdf8;" title="Compact"></i>
+                        <i th:if="${spot.spotType.name() == 'STANDARD'}" class="ph ph-car" style="color: #94a3b8;" title="Standard"></i>
+                    </div>
+
+                    <div style="font-size: 0.72rem; font-weight: 600; text-transform: uppercase;">
+                        <span th:if="${spot.isOccupied}">Occupied</span>
+                        <span th:if="${spot.isReserved}">Reserved</span>
+                        <span th:if="${!spot.isOccupied && !spot.isReserved}">Available</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Reservation Hold Form -->
+        <div class="glass-panel" style="padding: 2rem; height: fit-content;">
+            <h3 style="font-size: 1.35rem; margin-bottom: 0.5rem;"><i class="ph ph-ticket"></i> Reserve Spot</h3>
+            <p style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 1.5rem;">
+                Creates a 15-minute guaranteed hold so you can arrive safely without stress.
+            </p>
+
+            <form th:action="@{/reserve}" method="post">
+                <input type="hidden" name="parkingLotId" th:value="${lot.id}">
+                <input type="hidden" id="selectedSpotId" name="specificSpotId" value="">
+
+                <!-- Selected Spot Indicator -->
+                <div style="background: rgba(255, 255, 255, 0.04); border: 1px solid var(--glass-border); border-radius: 0.6rem; padding: 0.9rem; margin-bottom: 1.25rem;">
+                    <div style="font-size: 0.8rem; color: var(--text-dim);">SELECTED SPOT:</div>
+                    <div id="selectedSpotDisplay" style="font-size: 1.15rem; font-weight: 700; color: #38bdf8;">
+                        Auto-Assign Best Available
+                    </div>
+                </div>
+
+                <!-- Spot Type -->
+                <div style="margin-bottom: 1.25rem;">
+                    <label style="display: block; font-size: 0.85rem; font-weight: 600; margin-bottom: 0.4rem; color: var(--text-muted);">
+                        Spot Category
+                    </label>
+                    <select name="spotType" class="form-select">
+                        <option value="STANDARD">Standard Vehicle</option>
+                        <option value="EV_CHARGING">EV Charging Dedicated</option>
+                        <option value="COMPACT">Compact / Small Car</option>
+                        <option value="HANDICAP">Accessible (Handicap)</option>
+                    </select>
+                </div>
+
+                <!-- Duration -->
+                <div style="margin-bottom: 1.25rem;">
+                    <label style="display: block; font-size: 0.85rem; font-weight: 600; margin-bottom: 0.4rem; color: var(--text-muted);">
+                        Estimated Duration (Hours)
+                    </label>
+                    <select name="durationHours" class="form-select" id="durationSelect" onchange="calculateFee()">
+                        <option value="1">1 Hour</option>
+                        <option value="2" selected>2 Hours</option>
+                        <option value="3">3 Hours</option>
+                        <option value="4">4 Hours</option>
+                        <option value="6">6 Hours</option>
+                        <option value="8">8 Hours (Full Day)</option>
+                    </select>
+                </div>
+
+                <!-- Vehicle Plate Number -->
+                <div style="margin-bottom: 1.5rem;">
+                    <label style="display: block; font-size: 0.85rem; font-weight: 600; margin-bottom: 0.4rem; color: var(--text-muted);">
+                        Vehicle Plate Number
+                    </label>
+                    <input type="text" name="licensePlate" placeholder="e.g. CAB-4589" class="form-input">
+                </div>
+
+                <!-- Estimated Fee Calculation -->
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; padding: 0.75rem 0; border-top: 1px solid var(--glass-border); border-bottom: 1px solid var(--glass-border);">
+                    <span style="color: var(--text-muted); font-size: 0.9rem;">Estimated Cost:</span>
+                    <span id="estimatedFeeDisplay" style="font-size: 1.25rem; font-weight: 800; color: #34d399;">
+                        LKR 300.00
+                    </span>
+                </div>
+
+                <button type="submit" class="btn-primary" style="width: 100%; justify-content: center; padding: 0.85rem;">
+                    <i class="ph ph-lock-key"></i> Hold Spot For 15 Mins
+                </button>
+            </form>
+        </div>
+
+    </div>
+
+</div>
+
+<script th:inline="javascript">
+    const hourlyRate = /*[[${lot.hourlyRate}]]*/ 150.0;
+
+    function selectSpot(id, spotNumber, spotType) {
+        document.getElementById('selectedSpotId').value = id;
+        document.getElementById('selectedSpotDisplay').innerHTML = 
+            `<span style="color:#34d399;">Spot ${spotNumber}</span> <span style="font-size:0.8rem; color:#94a3b8;">(${spotType})</span>`;
+    }
+
+    function calculateFee() {
+        const hours = parseInt(document.getElementById('durationSelect').value);
+        const total = (hours * hourlyRate).toFixed(2);
+        document.getElementById('estimatedFeeDisplay').innerText = 'LKR ' + total;
+    }
+</script>
+
+</body>
+</html>

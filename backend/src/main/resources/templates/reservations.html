@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org" th:replace="~{layout/base :: html}">
+<head>
+    <title>My Reservations - SmartPark</title>
+</head>
+<body>
+
+<div th:fragment="content">
+
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; flex-wrap: wrap; gap: 1rem;">
+        <div>
+            <h1 style="font-size: 2rem; margin-bottom: 0.35rem;">My Reservations</h1>
+            <p style="color: var(--text-muted);">Manage your active holds, confirmed bookings, and reservation history</p>
+        </div>
+        <a th:href="@{/lots}" class="btn-primary"><i class="ph ph-plus"></i> Reserve New Spot</a>
+    </div>
+
+    <!-- Empty state -->
+    <div th:if="${reservations == null or reservations.empty}" class="glass-panel" style="text-align: center; padding: 4rem 2rem;">
+        <i class="ph ph-ticket" style="font-size: 3.5rem; color: var(--text-dim); margin-bottom: 1rem;"></i>
+        <h3 style="font-size: 1.35rem; margin-bottom: 0.5rem;">No Reservations Yet</h3>
+        <p style="color: var(--text-muted); margin-bottom: 1.5rem;">Browse available parking lots and secure your first spot.</p>
+        <a th:href="@{/lots}" class="btn-primary">Explore Parking Lots</a>
+    </div>
+
+    <!-- Reservations List -->
+    <div style="display: flex; flex-direction: column; gap: 1.25rem;">
+        <div th:each="res : ${reservations}" class="glass-panel" style="padding: 1.75rem;">
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 1.25rem;">
+                <div>
+                    <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.5rem;">
+                        <h3 th:text="${res.parkingSpot.parkingLot.name}" style="font-size: 1.25rem;">Parking Lot Name</h3>
+
+                        <!-- Status Badge -->
+                        <span class="badge"
+                              th:classappend="${res.status.name() == 'PENDING_HOLD'} ? 'badge-amber' :
+                                             (${res.status.name() == 'CONFIRMED'} ? 'badge-blue' :
+                                             (${res.status.name() == 'ACTIVE_PARKING'} ? 'badge-green' :
+                                             (${res.status.name() == 'COMPLETED'} ? 'badge-green' :
+                                             (${res.status.name() == 'CANCELLED'} ? 'badge-red' : 'badge-red'))))">
+                            <i class="ph ph-clock" th:if="${res.status.name() == 'PENDING_HOLD'}"></i>
+                            <i class="ph ph-check-circle" th:if="${res.status.name() == 'CONFIRMED' or res.status.name() == 'COMPLETED'}"></i>
+                            <i class="ph ph-car" th:if="${res.status.name() == 'ACTIVE_PARKING'}"></i>
+                            <i class="ph ph-x-circle" th:if="${res.status.name() == 'CANCELLED' or res.status.name() == 'EXPIRED'}"></i>
+                            <span th:text="${res.status.name().replace('_', ' ')}">PENDING HOLD</span>
+                        </span>
+                    </div>
+
+                    <div style="display: flex; gap: 2rem; font-size: 0.9rem; color: var(--text-muted); flex-wrap: wrap;">
+                        <span><i class="ph ph-map-pin" style="color: #38bdf8;"></i> <span th:text="${res.parkingSpot.parkingLot.address}">Address</span></span>
+                        <span><i class="ph ph-car" style="color: #94a3b8;"></i> Spot <strong th:text="${res.parkingSpot.spotNumber}" style="color: #fff;">A-01</strong></span>
+                        <span><i class="ph ph-calendar" style="color: #94a3b8;"></i> <span th:text="${#temporals.format(res.startTime, 'MMM dd, yyyy HH:mm')}">Sep 12, 2026 10:00</span></span>
+                        <span><i class="ph ph-clock" style="color: #94a3b8;"></i> Until <span th:text="${#temporals.format(res.endTime, 'HH:mm')}">12:00</span></span>
+                    </div>
+
+                    <!-- 15-min hold countdown warning -->
+                    <div th:if="${res.status.name() == 'PENDING_HOLD'}" style="margin-top: 0.75rem; padding: 0.6rem 1rem; background: rgba(245, 158, 11, 0.1); border: 1px solid rgba(245, 158, 11, 0.3); border-radius: 0.5rem; font-size: 0.85rem; color: #fbbf24;">
+                        <i class="ph ph-hourglass-medium"></i>
+                        Hold expires at: <strong th:text="${#temporals.format(res.holdExpiresAt, 'HH:mm:ss')}">10:15:00</strong> — Confirm before it expires!
+                    </div>
+                </div>
+
+                <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 0.75rem;">
+                    <div style="text-align: right;">
+                        <div style="font-size: 1.3rem; font-weight: 800; color: #34d399;" th:text="'LKR ' + ${res.totalAmount}">LKR 300.00</div>
+                        <div style="font-size: 0.78rem; color: var(--text-dim);">Estimated Total</div>
+                    </div>
+
+                    <div style="display: flex; gap: 0.5rem;" th:if="${res.status.name() == 'PENDING_HOLD'}">
+                        <form th:action="@{'/reservations/' + ${res.id} + '/confirm'}" method="post">
+                            <button type="submit" class="btn-primary" style="padding: 0.45rem 1rem; font-size: 0.88rem;">
+                                <i class="ph ph-check-fat"></i> Confirm Hold
+                            </button>
+                        </form>
+                        <form th:action="@{'/reservations/' + ${res.id} + '/cancel'}" method="post">
+                            <button type="submit" class="btn-danger" style="padding: 0.45rem 1rem; font-size: 0.88rem;">
+                                <i class="ph ph-x"></i> Cancel
+                            </button>
+                        </form>
+                    </div>
+
+                    <div th:if="${res.status.name() == 'CONFIRMED'}">
+                        <form th:action="@{'/sessions/start'}" method="post">
+                            <input type="hidden" name="reservationId" th:value="${res.id}">
+                            <button type="submit" class="btn-primary" style="padding: 0.45rem 1rem; font-size: 0.88rem;">
+                                <i class="ph ph-play"></i> Start Parking Session
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+</body>
+</html>

@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org" th:replace="~{layout/base :: html}">
+<head>
+    <title>Explore Parking Lots - SmartPark</title>
+</head>
+<body>
+
+<div th:fragment="content">
+    
+    <!-- Header with Search -->
+    <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 2rem; flex-wrap: wrap; gap: 1.5rem;">
+        <div>
+            <h1 style="font-size: 2.2rem; margin-bottom: 0.5rem;">Available Parking Lots</h1>
+            <p style="color: var(--text-muted);">Real-time availability and smart booking across the metropolitan network</p>
+        </div>
+
+        <form th:action="@{/lots}" method="get" style="display: flex; gap: 0.5rem; min-width: 320px;">
+            <input type="text" name="search" th:value="${searchQuery}" placeholder="Search garage or area..." class="form-input" style="padding: 0.6rem 1rem;">
+            <button type="submit" class="btn-primary" style="padding: 0.6rem 1.2rem;">
+                <i class="ph ph-magnifying-glass"></i> Filter
+            </button>
+        </form>
+    </div>
+
+    <!-- Empty State -->
+    <div th:if="${lots == null or lots.empty}" class="glass-panel" style="text-align: center; padding: 4rem 2rem;">
+        <i class="ph ph-car-simple" style="font-size: 3.5rem; color: var(--text-dim); margin-bottom: 1rem;"></i>
+        <h3 style="font-size: 1.4rem; margin-bottom: 0.5rem;">No Parking Facilities Found</h3>
+        <p style="color: var(--text-muted); margin-bottom: 1.5rem;">Try modifying your search criteria or explore nearby hubs.</p>
+        <a th:href="@{/lots}" class="btn-secondary">Clear Filter</a>
+    </div>
+
+    <!-- Lots Grid -->
+    <div th:if="${lots != null and !lots.empty}" class="grid-cards">
+        <div th:each="lot : ${lots}" class="glass-panel lot-card">
+            <div>
+                <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.75rem;">
+                    <h3 th:text="${lot.name}" style="font-size: 1.3rem;">Central Metro Hub</h3>
+                    <span class="badge" th:classappend="${lot.availableSpotsCount > 5} ? 'badge-green' : 'badge-amber'" 
+                          th:text="${lot.availableSpotsCount + ' Free'}">12 Free</span>
+                </div>
+
+                <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 0.75rem;">
+                    <i class="ph ph-map-pin" style="color: #38bdf8;"></i> <span th:text="${lot.address}">100 Galle Rd</span>
+                </p>
+
+                <p th:if="${lot.description != null}" th:text="${lot.description}" 
+                   style="color: var(--text-dim); font-size: 0.85rem; margin-bottom: 1.25rem; line-height: 1.4;"></p>
+
+                <!-- Amenities Tags -->
+                <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 1.25rem;">
+                    <span th:if="${lot.hasEvCharging}" class="badge badge-purple"><i class="ph ph-lightning"></i> EV Charging</span>
+                    <span th:if="${lot.isCovered}" class="badge badge-blue"><i class="ph ph-umbrella"></i> Covered</span>
+                    <span th:if="${lot.hasCctvSecurity}" class="badge badge-green"><i class="ph ph-shield-check"></i> CCTV 24/7</span>
+                    <span th:if="${lot.hasHandicapAccess}" class="badge badge-amber"><i class="ph ph-wheelchair"></i> Accessible</span>
+                </div>
+
+                <!-- Occupancy Tracker -->
+                <div class="progress-bar-bg">
+                    <div class="progress-bar-fill" 
+                         th:style="'width: ' + ${lot.occupancyRate} + '%; background: ' + (${lot.occupancyRate > 80} ? '#fb7185' : '#34d399')"></div>
+                </div>
+                <div style="display: flex; justify-content: space-between; font-size: 0.8rem; color: var(--text-dim); margin-bottom: 1.25rem;">
+                    <span th:text="${lot.totalCapacity - lot.availableSpotsCount} + ' / ' + ${lot.totalCapacity} + ' Occupied'"></span>
+                    <span th:text="${#numbers.formatDecimal(lot.occupancyRate, 1, 0) + '% Occupancy'}"></span>
+                </div>
+            </div>
+
+            <!-- Footer Action -->
+            <div style="display: flex; justify-content: space-between; align-items: center; border-top: 1px solid var(--glass-border); padding-top: 1.25rem;">
+                <div>
+                    <span style="font-size: 1.35rem; font-weight: 800; color: #fff;" th:text="'LKR ' + ${lot.hourlyRate}">LKR 150</span>
+                    <span style="color: var(--text-dim); font-size: 0.85rem;"> / hr</span>
+                </div>
+                <a th:href="@{'/lots/' + ${lot.id}}" class="btn-primary" style="padding: 0.55rem 1.25rem;">
+                    View Live Spots <i class="ph ph-arrow-right"></i>
+                </a>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+</body>
+</html>
