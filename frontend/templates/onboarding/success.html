@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Onboarding Success | Smart Parking Platform</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@600;700;800&display=swap" rel="stylesheet" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {theme:{extend:{fontFamily:{sans:['Inter','sans-serif'],heading:['Outfit','sans-serif']},colors:{brand:{400:'#38bdf8',500:'#0284c7',600:'#0369a1',700:'#075985'}}}};
+  </script>
+  <link href="https://cdn.jsdelivr.net/npm/daisyui@4.12.10/dist/full.min.css" rel="stylesheet" />
+</head>
+<body class="gradient-bg min-h-screen flex flex-col items-center justify-center text-center">
+  <div class="glass p-8 rounded-2xl shadow-xl max-w-lg w-full">
+    <svg class="w-16 h-16 mx-auto text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+    <h1 class="font-heading text-2xl font-bold text-slate-900 mt-4">Welcome, <span class="text-brand-500">{{ client.company_name }}</span>!</h1>
+    <p class="text-slate-600 mt-2">Your company has been successfully registered. Below are the details we received:</p>
+    <ul class="mt-4 text-left space-y-2 text-slate-700">
+      <li><strong>Contact Person:</strong> {{ client.contact_person }}</li>
+      <li><strong>Email:</strong> {{ client.email }}</li>
+      {% if client.phone %}<li><strong>Phone:</strong> {{ client.phone }}</li>{% endif %}
+      {% if client.address %}<li><strong>Address:</strong> {{ client.address }}</li>{% endif %}
+    </ul>
+    <a href="/dashboard" class="btn btn-primary mt-6 w-full">Go to Dashboard</a>
+  </div>
+  <footer class="text-slate-400 text-xs mt-8">
+    © 2026 Smart Parking Availability Platform – Phase 5
+  </footer>
+</body>
+</html>

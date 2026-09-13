@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Dashboard | Smart Parking Platform</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@600;700;800&display=swap" rel="stylesheet" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {theme:{extend:{fontFamily:{sans:['Inter','sans-serif'],heading:['Outfit','sans-serif']},colors:{brand:{400:'#38bdf8',500:'#0284c7',600:'#0369a1',700:'#075985'}}}};
+  </script>
+  <link href="https://cdn.jsdelivr.net/npm/daisyui@4.12.10/dist/full.min.css" rel="stylesheet" />
+</head>
+<body class="gradient-bg min-h-screen flex flex-col items-center justify-center text-center">
+  <div class="glass p-8 rounded-2xl shadow-xl max-w-lg w-full">
+    <h1 class="font-heading text-2xl font-bold text-slate-900">Your Dashboard</h1>
+    <p class="text-slate-600 mt-4">Placeholder dashboard – integrate client list, analytics, and settings here.</p>
+    <a href="/onboarding" class="btn btn-primary mt-6 w-full">Register New Client</a>
+  </div>
+  <footer class="text-slate-400 text-xs mt-8">
+    © 2026 Smart Parking Availability Platform – Phase 5
+  </footer>
+</body>
+</html>
