@@ -287,12 +287,82 @@ Both backend services expose dedicated health-check endpoints for automated moni
 
 ---
 
-## 15. Future 8-Day Development Roadmap
+## 15. Day 2 Completion Checklist
+
+- [x] **Feature Branch:** All Day 2 work isolated on `feature/day-02-authentication-ui`.
+- [x] **UserProfile Model:** Extended Django `User` with `UserProfile` (role, phone, timestamps) via `OneToOneField`.
+- [x] **User Roles:** `CUSTOMER` and `PARKING_PROVIDER` roles via `UserRole.TextChoices`.
+- [x] **Registration:** `RegisterSerializer` + `RegisterAPIView` (POST `/api/auth/register/`) returning JWT tokens on success.
+- [x] **Login:** `LoginSerializer` + `LoginAPIView` (POST `/api/auth/login/`) issuing access + refresh JWT tokens with embedded `role` claim.
+- [x] **Logout:** `LogoutAPIView` (POST `/api/auth/logout/`) blacklisting refresh tokens via `simplejwt.token_blacklist`.
+- [x] **JWT Token Refresh:** `TokenRefreshView` (POST `/api/auth/token/refresh/`) via `simplejwt`.
+- [x] **Password Validation:** Django's built-in validators + custom `RegistrationForm` validation (strength, match, uniqueness).
+- [x] **Protected Profile API:** `ProfileAPIView` (GET/PUT `/api/auth/profile/`) requires Bearer token.
+- [x] **Web Registration Page:** `/register/` — Tailwind-styled form with real-time validation error display.
+- [x] **Web Login Page:** `/login/` — Tailwind-styled form with `?next=` redirect support.
+- [x] **Protected Dashboard:** `/dashboard/` — Role-specific UI for Customer and Parking Provider.
+- [x] **User Profile Page:** `/profile/` — Editable name, phone; read-only account info.
+- [x] **Logout Web View:** POST `/logout/` invalidates Django session and redirects.
+- [x] **Auth-Aware Navbar:** Responsive Tailwind navbar with mobile hamburger menu; shows name/role/logout when authenticated.
+- [x] **Role-Specific Dashboard:** Customer sees parking search cards; Parking Provider sees operations/analytics cards.
+- [x] **Admin Integration:** `UserProfile` registered as inline in Django Admin.
+- [x] **Test Suite:** 40 tests across model, API, and web view layers — all passing with SQLite test DB.
+- [x] **Atomic Git Commits:** 25+ meaningful commits on `feature/day-02-authentication-ui`.
+
+---
+
+## 16. Day 2 Authentication API Reference
+
+| Method | Endpoint | Auth Required | Description |
+|--------|----------|---------------|-------------|
+| `POST` | `/api/auth/register/` | No | Register a new user; returns JWT tokens |
+| `POST` | `/api/auth/login/` | No | Login with email + password; returns JWT tokens |
+| `POST` | `/api/auth/token/refresh/` | No (needs refresh token) | Obtain a fresh access token |
+| `POST` | `/api/auth/logout/` | Yes (Bearer) | Blacklist refresh token |
+| `GET` | `/api/auth/profile/` | Yes (Bearer) | Retrieve authenticated user's profile |
+| `PUT` | `/api/auth/profile/` | Yes (Bearer) | Update name / phone number |
+
+### Example: Register Request
+```json
+POST /api/auth/register/
+{
+  "first_name": "Jane",
+  "last_name": "Smith",
+  "email": "jane@example.com",
+  "password": "Secure@123!",
+  "confirm_password": "Secure@123!",
+  "role": "CUSTOMER"
+}
+```
+
+### Example: Login Response
+```json
+{
+  "message": "Login successful.",
+  "user": {
+    "id": 1,
+    "username": "jane@example.com",
+    "email": "jane@example.com",
+    "first_name": "Jane",
+    "last_name": "Smith",
+    "role": "CUSTOMER",
+    "profile": { "role": "CUSTOMER", "phone_number": "", ... }
+  },
+  "tokens": {
+    "access": "<JWT access token>",
+    "refresh": "<JWT refresh token>"
+  }
+}
+```
+
+---
+
+## 17. Future 8-Day Development Roadmap
 
 | Day | Title | Key Objectives |
 |---|---|---|
 | **Day 1 (Completed)** | **Project Setup** | Django, DRF, Oracle DB, Tailwind, Spring Boot & Maven foundation. |
-| **Day 2** | **Authentication & UI** | User model extensions, driver profiles, JWT / session auth, role management, dashboard UI. |
+| **Day 2 (Completed)** | **Authentication & UI** | UserProfile, JWT auth, registration/login/logout, protected routes, role dashboards, 40 tests. |
 | **Day 3** | **Parking Locations & Map** | Parking garages and surface lots data model, geospatial coordinates, Leaflet/Mapbox map integration. |
 | **Day 4** | **Parking Availability** | Real-time spot availability tracker, capacity thresholds, occupancy state transitions. |
 | **Day 5** | **ML Availability Prediction** | Occupancy forecasting model (time-series / gradient boosting) and batch prediction pipeline. |
