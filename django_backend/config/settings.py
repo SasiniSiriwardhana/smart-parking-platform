@@ -10,6 +10,7 @@ Generated for a clean, modular architecture supporting:
 
 import os
 import sys
+from datetime import timedelta
 from pathlib import Path
 from dotenv import load_dotenv
 
@@ -18,9 +19,6 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 # Load environment variables from .env if present
 load_dotenv(BASE_DIR / '.env')
-
-# Quick-start development settings - unsuitable for production
-# See https://docs.djangoproject.com/en/5.1/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = os.getenv(
@@ -52,6 +50,8 @@ INSTALLED_APPS = [
 
     # Third-party packages
     'rest_framework',
+    'rest_framework_simplejwt',
+    'rest_framework_simplejwt.token_blacklist',
     'corsheaders',
 
     # Smart Parking Platform Apps
@@ -121,10 +121,21 @@ DATABASES = {
     }
 }
 
+# Automated testing / SQLite fallback when testing or DB_ENGINE=sqlite3
+if 'test' in sys.argv or os.getenv('DB_ENGINE') == 'sqlite3':
+    DATABASES['default'] = {
+        'ENGINE': 'django.db.backends.sqlite3',
+        'NAME': BASE_DIR / 'test_db.sqlite3',
+    }
+
 # ==============================================================================
 # Django REST Framework Configuration
 # ==============================================================================
 REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': (
+        'rest_framework_simplejwt.authentication.JWTAuthentication',
+        'rest_framework.authentication.SessionAuthentication',
+    ),
     'DEFAULT_PERMISSION_CLASSES': [
         'rest_framework.permissions.AllowAny',
     ],
@@ -133,6 +144,28 @@ REST_FRAMEWORK = {
         'rest_framework.renderers.BrowsableAPIRenderer',
     ],
 }
+
+# ==============================================================================
+# Simple JWT Configuration
+# ==============================================================================
+SIMPLE_JWT = {
+    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=60),
+    'REFRESH_TOKEN_LIFETIME': timedelta(days=1),
+    'ROTATE_REFRESH_TOKENS': True,
+    'BLACKLIST_AFTER_ROTATION': True,
+    'UPDATE_LAST_LOGIN': True,
+    'ALGORITHM': 'HS256',
+    'SIGNING_KEY': SECRET_KEY,
+    'AUTH_HEADER_TYPES': ('Bearer',),
+    'AUTH_HEADER_NAME': 'HTTP_AUTHORIZATION',
+    'USER_ID_FIELD': 'id',
+    'USER_ID_CLAIM': 'user_id',
+}
+
+# Authentication URL Redirects
+LOGIN_URL = 'accounts:login'
+LOGIN_REDIRECT_URL = 'accounts:dashboard'
+LOGOUT_REDIRECT_URL = 'accounts:login'
 
 # ==============================================================================
 # CORS Configuration

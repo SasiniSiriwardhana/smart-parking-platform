@@ -14,6 +14,9 @@ urlpatterns = [
     # Required Day 1 contract: GET /api/health/ -> {"status": "ok", "service": "django-backend"}
     path('api/health/', HealthCheckView.as_view(), name='api-health'),
 
+    # Authentication & User Profiles (Day 2)
+    path('', include('apps.accounts.urls', namespace='accounts')),
+
     # Django Admin Site
     path('admin/', admin.site.urls),
 ]

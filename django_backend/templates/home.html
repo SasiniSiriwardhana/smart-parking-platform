@@ -16,8 +16,8 @@
         <div class="text-center max-w-3xl mx-auto pt-8 pb-12">
             <!-- Project Stage Pill -->
             <div class="inline-flex items-center space-x-2 px-3.5 py-1.5 rounded-full bg-sky-100 text-sky-800 text-xs font-semibold uppercase tracking-wider mb-6 shadow-xs border border-sky-200/60">
-                <span class="w-2 h-2 rounded-full bg-sky-600"></span>
-                <span>Day 1 Environment Setup &bull; Production Foundation</span>
+                <span class="w-2 h-2 rounded-full bg-sky-600 animate-pulse"></span>
+                <span>Day 2 &bull; Authentication &amp; User Interface Live</span>
             </div>
 
             <h1 class="font-heading text-4xl sm:text-5xl lg:text-6xl font-extrabold text-slate-900 tracking-tight leading-tight">
@@ -26,21 +26,32 @@
             </h1>
 
             <p class="mt-6 text-lg sm:text-xl text-slate-600 font-normal leading-relaxed">
-                Find available parking, compare options, and make smarter parking decisions.
+                Find smarter parking, compare options, and make better parking decisions.
             </p>
 
-            <!-- Quick Action / Status Badges -->
+            <!-- CTA Buttons -->
             <div class="mt-8 flex flex-wrap items-center justify-center gap-4">
-                <a href="/api/health/" class="inline-flex items-center px-6 py-3 rounded-xl bg-sky-600 hover:bg-sky-700 text-white font-medium text-sm shadow-lg shadow-sky-600/25 transition-all duration-200 transform hover:-translate-y-0.5">
-                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+                <a href="#" id="find-parking-btn" class="inline-flex items-center px-6 py-3 rounded-xl bg-white hover:bg-slate-50 text-slate-800 font-medium text-sm border border-slate-200 shadow-sm transition-all duration-200 hover:-translate-y-0.5">
+                    <svg class="w-4 h-4 mr-2 text-sky-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
                     </svg>
-                    Django REST Health Check
+                    Find Parking
                 </a>
-                <a href="http://localhost:8081/api/recommendation/health" target="_blank" class="inline-flex items-center px-6 py-3 rounded-xl bg-white hover:bg-slate-50 text-slate-700 font-medium text-sm border border-slate-200 shadow-sm transition-all duration-200">
-                    <span class="w-2.5 h-2.5 rounded-full bg-amber-500 mr-2"></span>
-                    Spring Boot Service (Port 8081)
+                {% if user.is_authenticated %}
+                <a href="{% url 'accounts:dashboard' %}" id="get-started-authenticated-btn" class="inline-flex items-center px-6 py-3 rounded-xl bg-gradient-to-r from-sky-600 to-indigo-600 hover:from-sky-700 hover:to-indigo-700 text-white font-medium text-sm shadow-lg shadow-sky-500/30 transition-all duration-200 transform hover:-translate-y-0.5">
+                    Go to Dashboard
+                    <svg class="w-4 h-4 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"/>
+                    </svg>
                 </a>
+                {% else %}
+                <a href="{% url 'accounts:register' %}" id="get-started-btn" class="inline-flex items-center px-6 py-3 rounded-xl bg-gradient-to-r from-sky-600 to-indigo-600 hover:from-sky-700 hover:to-indigo-700 text-white font-medium text-sm shadow-lg shadow-sky-500/30 transition-all duration-200 transform hover:-translate-y-0.5">
+                    Get Started
+                    <svg class="w-4 h-4 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"/>
+                    </svg>
+                </a>
+                {% endif %}
             </div>
         </div>
 
