@@ -53,5 +53,10 @@ class UserProfile(models.Model):
         """Return True if user has Customer role."""
         return self.role == UserRole.CUSTOMER
 
+    @property
+    def is_parking_provider(self):
+        """Return True if user has Parking Provider role."""
+        return self.role == UserRole.PARKING_PROVIDER
+
     def __str__(self):
         return f"{self.user.username} ({self.get_role_display()})"
