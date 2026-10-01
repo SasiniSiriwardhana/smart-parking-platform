@@ -19,13 +19,21 @@ class UserProfileSerializer(serializers.ModelSerializer):
 class UserSerializer(serializers.ModelSerializer):
     """
     Serializer for User model with embedded UserProfile.
+    Exposes a top-level 'role' field for easy frontend consumption.
     """
     profile = UserProfileSerializer(read_only=True)
+    role = serializers.SerializerMethodField()
 
     class Meta:
         model = User
-        fields = ('id', 'username', 'email', 'first_name', 'last_name', 'is_staff', 'is_active', 'profile')
+        fields = ('id', 'username', 'email', 'first_name', 'last_name', 'is_staff', 'is_active', 'role', 'profile')
         read_only_fields = ('id', 'username', 'is_staff', 'is_active')
+
+    def get_role(self, obj):
+        """Return the user's role string directly."""
+        if hasattr(obj, 'profile'):
+            return obj.profile.role
+        return None
 
 
 class RegisterSerializer(serializers.ModelSerializer):
