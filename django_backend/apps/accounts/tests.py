@@ -118,13 +118,15 @@ class RegisterAPIViewTest(TestCase):
     def test_register_creates_user_profile(self):
         """Registration creates a UserProfile for the new user."""
         self.client.post(self.url, self._valid_payload(), format='json')
-        user = User.objects.get(username='newuser')
+        # The API serializer uses email as the username field
+        user = User.objects.get(username='new@example.com')
         self.assertTrue(hasattr(user, 'profile'))
         self.assertEqual(user.profile.role, UserRole.CUSTOMER)
 
     def test_register_duplicate_username_returns_400(self):
-        """Duplicate username returns HTTP 400."""
-        make_user(username='newuser', email='other@example.com')
+        """Duplicate email (used as username) returns HTTP 400."""
+        # The API uses email as both email and username — duplicate email should fail
+        make_user(username='new@example.com', email='new@example.com')
         response = self.client.post(self.url, self._valid_payload(), format='json')
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
