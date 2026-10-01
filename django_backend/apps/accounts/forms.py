@@ -45,7 +45,7 @@ class RegistrationForm(forms.Form):
     )
     password = forms.CharField(
         required=True,
-        widget=forms.PasswordInput(attrs={
+        widget=forms.PasswordInput(render_value=False, attrs={
             'class': 'w-full px-4 py-2.5 rounded-xl border border-slate-200 bg-white text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-transparent transition-all',
             'placeholder': '••••••••',
             'id': 'id_password'
@@ -53,12 +53,18 @@ class RegistrationForm(forms.Form):
     )
     confirm_password = forms.CharField(
         required=True,
-        widget=forms.PasswordInput(attrs={
+        widget=forms.PasswordInput(render_value=False, attrs={
             'class': 'w-full px-4 py-2.5 rounded-xl border border-slate-200 bg-white text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-transparent transition-all',
             'placeholder': '••••••••',
             'id': 'id_confirm_password'
         })
     )
+
+    def clean_first_name(self):
+        return self.cleaned_data.get('first_name', '').strip()
+
+    def clean_last_name(self):
+        return self.cleaned_data.get('last_name', '').strip()
 
     def clean_email(self):
         email = self.cleaned_data.get('email', '').lower().strip()
