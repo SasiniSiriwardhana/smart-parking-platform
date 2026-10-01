@@ -110,3 +110,52 @@ class RegistrationForm(forms.Form):
             role=cleaned_data['role']
         )
         return user
+
+
+class LoginForm(forms.Form):
+    """
+    Login form with email and password.
+    """
+    email = forms.EmailField(
+        required=True,
+        widget=forms.EmailInput(attrs={
+            'class': 'w-full px-4 py-2.5 rounded-xl border border-slate-200 bg-white text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-transparent transition-all',
+            'placeholder': 'name@example.com',
+            'id': 'id_email',
+            'autofocus': 'autofocus'
+        })
+    )
+    password = forms.CharField(
+        required=True,
+        widget=forms.PasswordInput(render_value=False, attrs={
+            'class': 'w-full px-4 py-2.5 rounded-xl border border-slate-200 bg-white text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-transparent transition-all',
+            'placeholder': '••••••••',
+            'id': 'id_password'
+        })
+    )
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._user = None
+
+    def clean(self):
+        cleaned_data = super().clean()
+        email = cleaned_data.get('email', '').lower().strip()
+        password = cleaned_data.get('password')
+
+        if email and password:
+            from django.contrib.auth.models import User
+            user = (
+                User.objects.filter(email__iexact=email).first()
+                or User.objects.filter(username__iexact=email).first()
+            )
+            if not user or not user.check_password(password):
+                raise forms.ValidationError("Invalid email or password. Please try again.")
+            if not user.is_active:
+                raise forms.ValidationError("This account has been deactivated.")
+            self._user = user
+        return cleaned_data
+
+    def get_user(self):
+        return self._user
+
