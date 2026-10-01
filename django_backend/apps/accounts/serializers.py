@@ -94,3 +94,31 @@ class RegisterSerializer(serializers.ModelSerializer):
         )
 
         return user
+
+
+class LoginSerializer(serializers.Serializer):
+    """
+    Serializer for validating login credentials and issuing JWT tokens.
+    """
+    email = serializers.EmailField(required=True)
+    password = serializers.CharField(write_only=True, required=True, style={'input_type': 'password'})
+
+    def validate(self, attrs):
+        email = attrs.get('email', '').lower().strip()
+        password = attrs.get('password')
+
+        user = User.objects.filter(email__iexact=email).first() or User.objects.filter(username__iexact=email).first()
+
+        if not user or not user.check_password(password):
+            raise serializers.ValidationError("Invalid email or password.")
+
+        if not user.is_active:
+            raise serializers.ValidationError("This account has been deactivated.")
+
+        # Ensure user profile exists
+        if not hasattr(user, 'profile'):
+            UserProfile.objects.create(user=user, role=UserRole.CUSTOMER)
+
+        attrs['user'] = user
+        return attrs
+
