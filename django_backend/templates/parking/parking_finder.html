@@ -1,0 +1,508 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Find Parking — Smart Parking Availability Platform{% endblock %}
+
+{% block extra_head %}
+<!-- Leaflet.js Map (OpenStreetMap — no API key needed) -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin=""/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+<style>
+  #parking-map {
+    height: 520px;
+    border-radius: 1rem;
+    z-index: 1;
+  }
+  .leaflet-popup-content {
+    font-family: 'Inter', sans-serif;
+    font-size: 0.85rem;
+    min-width: 200px;
+  }
+  .lot-card { transition: all 0.2s ease; cursor: pointer; }
+  .lot-card:hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(0,0,0,0.12); }
+  .lot-card.active { border-color: #0284c7; box-shadow: 0 0 0 3px rgba(2,132,199,0.2); }
+  .badge-available { background: #dcfce7; color: #16a34a; }
+  .badge-limited   { background: #fef9c3; color: #ca8a04; }
+  .badge-full      { background: #fee2e2; color: #dc2626; }
+  #filters-panel label { font-weight: 500; font-size: 0.8rem; color: #475569; }
+  .filter-select {
+    border: 1px solid #e2e8f0; border-radius: 0.5rem;
+    padding: 0.4rem 0.75rem; font-size: 0.85rem;
+    color: #1e293b; background: white; width: 100%;
+  }
+  .filter-select:focus { outline: none; border-color: #0284c7; box-shadow: 0 0 0 2px rgba(2,132,199,0.2); }
+  #search-input:focus { outline: none; border-color: #0284c7; box-shadow: 0 0 0 2px rgba(2,132,199,0.2); }
+  #locate-btn:hover { background: #0369a1; }
+  .skeleton { background: linear-gradient(90deg, #f1f5f9 25%, #e2e8f0 50%, #f1f5f9 75%); background-size: 200% 100%; animation: shimmer 1.5s infinite; border-radius: 0.75rem; height: 160px; }
+  @keyframes shimmer { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+
+  <!-- ── Page Header ─────────────────────────────────────────────────────── -->
+  <div class="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+    <div>
+      <h1 class="font-heading text-3xl font-bold text-slate-900">Find Parking</h1>
+      <p class="mt-1 text-sm text-slate-500">Browse parking lots, filter by distance, price or availability.</p>
+    </div>
+    {% if user.is_authenticated and user.profile.is_parking_provider %}
+      <a href="{% url 'parking:create' %}" id="add-parking-btn"
+         class="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-sky-600 to-indigo-600 text-white text-sm font-medium shadow-md hover:from-sky-700 hover:to-indigo-700 transition-all">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+        </svg>
+        Add Parking
+      </a>
+    {% endif %}
+  </div>
+
+  <!-- ── Search Bar ──────────────────────────────────────────────────────── -->
+  <div class="mb-4 relative">
+    <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+    </svg>
+    <input type="text" id="search-input" placeholder="Search by name or address…"
+           class="w-full pl-10 pr-4 py-3 border border-slate-200 rounded-xl text-sm bg-white text-slate-800 placeholder-slate-400 shadow-sm" />
+  </div>
+
+  <!-- ── Filters Panel ───────────────────────────────────────────────────── -->
+  <div id="filters-panel" class="mb-6 p-4 bg-white border border-slate-200 rounded-xl shadow-sm flex flex-wrap gap-4 items-end">
+
+    <!-- Distance Filter -->
+    <div class="flex-1 min-w-[140px]">
+      <label class="block mb-1">Distance</label>
+      <select id="filter-distance" class="filter-select">
+        <option value="">Any distance</option>
+        <option value="1">Within 1 km</option>
+        <option value="3">Within 3 km</option>
+        <option value="5">Within 5 km</option>
+        <option value="10">Within 10 km</option>
+      </select>
+    </div>
+
+    <!-- Price Filter -->
+    <div class="flex-1 min-w-[140px]">
+      <label class="block mb-1">Price</label>
+      <select id="filter-price" class="filter-select">
+        <option value="">Any price</option>
+        <option value="0-100">Under Rs. 100/hr</option>
+        <option value="100-200">Rs. 100–200/hr</option>
+        <option value="200-9999">Above Rs. 200/hr</option>
+      </select>
+    </div>
+
+    <!-- Availability Filter -->
+    <div class="flex-1 min-w-[140px]">
+      <label class="block mb-1">Availability</label>
+      <select id="filter-availability" class="filter-select">
+        <option value="">Any</option>
+        <option value="1">Available now (1+)</option>
+        <option value="10">10+ spaces</option>
+        <option value="20">20+ spaces</option>
+      </select>
+    </div>
+
+    <!-- Use My Location -->
+    <div class="flex-shrink-0">
+      <button id="locate-btn"
+              class="flex items-center gap-2 px-4 py-2 rounded-xl bg-sky-600 text-white text-sm font-medium transition-colors">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/>
+        </svg>
+        <span id="locate-label">Use My Location</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- ── Location Status ────────────────────────────────────────────────── -->
+  <div id="location-status" class="hidden mb-4 px-4 py-2 rounded-xl text-sm font-medium"></div>
+
+  <!-- ── Main Content: List + Map ───────────────────────────────────────── -->
+  <div class="flex flex-col lg:flex-row gap-6">
+
+    <!-- Parking List -->
+    <div class="lg:w-2/5 xl:w-1/3 flex flex-col gap-4">
+      <div class="flex items-center justify-between">
+        <span id="results-count" class="text-sm font-medium text-slate-600"></span>
+        <button id="reset-filters-btn" class="text-xs text-sky-600 hover:text-sky-700 font-medium hidden">Reset filters</button>
+      </div>
+
+      <!-- Lot Cards Container -->
+      <div id="lot-cards-container" class="flex flex-col gap-3 max-h-[560px] overflow-y-auto pr-1">
+        <!-- Skeleton loading states -->
+        <div class="skeleton" id="skeleton-1"></div>
+        <div class="skeleton" id="skeleton-2"></div>
+        <div class="skeleton" id="skeleton-3"></div>
+      </div>
+
+      <!-- Empty state -->
+      <div id="empty-state" class="hidden text-center py-12 bg-white rounded-xl border border-slate-200">
+        <svg class="w-12 h-12 mx-auto text-slate-300 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+        </svg>
+        <p class="text-slate-600 font-medium" id="empty-message">No parking locations match your filters.</p>
+        <p class="text-slate-400 text-sm mt-1">Try adjusting your search criteria.</p>
+      </div>
+    </div>
+
+    <!-- Map -->
+    <div class="lg:flex-1">
+      <div class="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
+        <div id="parking-map"></div>
+      </div>
+    </div>
+
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// ── Data injected from Django ─────────────────────────────────────────────
+const ALL_LOTS = {{ lots_json|safe }};
+
+// ── State ─────────────────────────────────────────────────────────────────
+let userLat = null;
+let userLon = null;
+let map = null;
+let markers = {};
+let destMarker = null;
+let filteredLots = [...ALL_LOTS];
+
+// ── Haversine distance (km) ────────────────────────────────────────────────
+function haversine(lat1, lon1, lat2, lon2) {
+  const R = 6371;
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+  const a = Math.sin(dLat/2)**2 + Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLon/2)**2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+}
+
+function formatDist(km) {
+  return km < 1 ? `${Math.round(km*1000)} m` : `${km.toFixed(1)} km`;
+}
+
+// ── Availability badge ─────────────────────────────────────────────────────
+function availBadge(lot) {
+  const pct = lot.total_slots > 0 ? lot.available_slots / lot.total_slots : 0;
+  let cls, label;
+  if (lot.available_slots === 0) {
+    cls = 'badge-full'; label = 'Full';
+  } else if (pct < 0.2) {
+    cls = 'badge-limited'; label = 'Limited';
+  } else {
+    cls = 'badge-available'; label = 'Available';
+  }
+  return `<span class="${cls} text-xs font-semibold px-2 py-0.5 rounded-full">${label}</span>`;
+}
+
+// ── Init Map ──────────────────────────────────────────────────────────────
+function initMap() {
+  // Default center: Colombo
+  map = L.map('parking-map').setView([6.9271, 79.8612], 13);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+    maxZoom: 19,
+  }).addTo(map);
+
+  // Click on map → set destination
+  map.on('click', function(e) {
+    setDestination(e.latlng.lat, e.latlng.lng);
+  });
+}
+
+// ── Parking marker icon ───────────────────────────────────────────────────
+function parkingIcon(highlighted = false) {
+  const color = highlighted ? '#0284c7' : '#475569';
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="36" height="44" viewBox="0 0 36 44">
+    <path fill="${color}" d="M18 0C8 0 0 8.1 0 18c0 12.4 18 26 18 26s18-13.6 18-26C36 8.1 28 0 18 0z"/>
+    <text x="18" y="23" font-family="Outfit,sans-serif" font-size="14" font-weight="700" fill="white" text-anchor="middle">P</text>
+  </svg>`;
+  return L.divIcon({
+    html: svg, className: '', iconSize: [36,44], iconAnchor: [18,44], popupAnchor: [0,-44]
+  });
+}
+
+function destIcon() {
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="36" height="44" viewBox="0 0 36 44">
+    <path fill="#dc2626" d="M18 0C8 0 0 8.1 0 18c0 12.4 18 26 18 26s18-13.6 18-26C36 8.1 28 0 18 0z"/>
+    <text x="18" y="23" font-family="Inter,sans-serif" font-size="16" fill="white" text-anchor="middle">📍</text>
+  </svg>`;
+  return L.divIcon({ html: svg, className: '', iconSize: [36,44], iconAnchor: [18,44], popupAnchor: [0,-44] });
+}
+
+// ── Set destination ───────────────────────────────────────────────────────
+function setDestination(lat, lon) {
+  userLat = lat; userLon = lon;
+  if (destMarker) map.removeLayer(destMarker);
+  destMarker = L.marker([lat, lon], {icon: destIcon()})
+    .addTo(map)
+    .bindPopup('<b>📍 Your Destination</b><br>Showing nearby parking lots.')
+    .openPopup();
+  showLocationStatus(`📍 Destination set. Calculating distances…`, 'sky');
+  renderAll();
+}
+
+// ── Populate/clear map markers ─────────────────────────────────────────────
+function renderMarkers(lots) {
+  // Remove old markers
+  Object.values(markers).forEach(m => map.removeLayer(m));
+  markers = {};
+
+  lots.forEach(lot => {
+    const dist = (userLat !== null) ? haversine(userLat, userLon, lot.latitude, lot.longitude) : null;
+    const distStr = dist !== null ? formatDist(dist) : '';
+    const popup = `
+      <div style="font-family:Inter,sans-serif; min-width:200px">
+        <div style="font-weight:700;font-size:1rem;margin-bottom:4px">${lot.name}</div>
+        <div style="color:#64748b;font-size:0.8rem;margin-bottom:6px">${lot.address}</div>
+        ${distStr ? `<div style="font-size:0.8rem;color:#0284c7;margin-bottom:4px">📍 ${distStr} away</div>` : ''}
+        <div style="display:flex;gap:8px;margin-bottom:8px">
+          <span style="background:#e0f2fe;color:#0369a1;font-size:0.75rem;padding:2px 8px;border-radius:999px;font-weight:600">
+            🅿 ${lot.available_slots}/${lot.total_slots}
+          </span>
+          <span style="background:#f0fdf4;color:#16a34a;font-size:0.75rem;padding:2px 8px;border-radius:999px;font-weight:600">
+            Rs. ${parseFloat(lot.price_per_hour).toFixed(0)}/hr
+          </span>
+        </div>
+        <a href="/parking/${lot.id}/" style="display:block;text-align:center;background:#0284c7;color:white;padding:6px 12px;border-radius:8px;font-size:0.8rem;font-weight:600;text-decoration:none;">
+          View Details →
+        </a>
+      </div>`;
+
+    const marker = L.marker([lot.latitude, lot.longitude], { icon: parkingIcon() })
+      .addTo(map)
+      .bindPopup(popup);
+
+    marker.on('click', function() {
+      highlightCard(lot.id);
+      // Change icon
+      Object.values(markers).forEach(m => m.setIcon(parkingIcon(false)));
+      marker.setIcon(parkingIcon(true));
+    });
+
+    markers[lot.id] = marker;
+  });
+}
+
+// ── Render lot cards ──────────────────────────────────────────────────────
+function renderCards(lots) {
+  const container = document.getElementById('lot-cards-container');
+  const emptyState = document.getElementById('empty-state');
+  const countEl = document.getElementById('results-count');
+
+  // Remove skeletons
+  ['skeleton-1','skeleton-2','skeleton-3'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.remove();
+  });
+
+  countEl.textContent = `${lots.length} parking location${lots.length !== 1 ? 's' : ''} found`;
+
+  if (lots.length === 0) {
+    container.innerHTML = '';
+    emptyState.classList.remove('hidden');
+    return;
+  }
+  emptyState.classList.add('hidden');
+
+  // Sort by distance if location available
+  let sorted = [...lots];
+  if (userLat !== null) {
+    sorted.sort((a, b) =>
+      haversine(userLat, userLon, a.latitude, a.longitude) -
+      haversine(userLat, userLon, b.latitude, b.longitude)
+    );
+  }
+
+  container.innerHTML = sorted.map(lot => {
+    const dist = (userLat !== null) ? haversine(userLat, userLon, lot.latitude, lot.longitude) : null;
+    const distStr = dist !== null ? formatDist(dist) : null;
+    const pct = lot.total_slots > 0 ? lot.available_slots / lot.total_slots : 0;
+    const openBadge = lot.is_open_now
+      ? `<span class="text-xs font-medium text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">Open</span>`
+      : `<span class="text-xs font-medium text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full">Closed</span>`;
+
+    return `
+    <div class="lot-card bg-white border border-slate-200 rounded-xl p-4 shadow-sm"
+         id="card-${lot.id}"
+         data-lot-id="${lot.id}"
+         onclick="focusLot(${lot.id})">
+      <!-- Header -->
+      <div class="flex items-start justify-between gap-2 mb-2">
+        <div>
+          <h3 class="font-heading font-semibold text-slate-900 text-sm leading-tight">${lot.name}</h3>
+          <p class="text-xs text-slate-500 mt-0.5 leading-tight">${lot.address}</p>
+        </div>
+        ${availBadge(lot)}
+      </div>
+
+      <!-- Stats row -->
+      <div class="flex flex-wrap gap-2 mb-3">
+        ${distStr ? `<span class="flex items-center gap-1 text-xs text-sky-700 font-medium bg-sky-50 px-2 py-0.5 rounded-full">📍 ${distStr}</span>` : ''}
+        <span class="text-xs text-slate-600 bg-slate-100 px-2 py-0.5 rounded-full font-medium">
+          🅿 ${lot.available_slots}/${lot.total_slots}
+        </span>
+        <span class="text-xs text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full font-medium">
+          Rs. ${parseFloat(lot.price_per_hour).toFixed(0)}/hr
+        </span>
+        ${openBadge}
+      </div>
+
+      <!-- Hours -->
+      <p class="text-xs text-slate-400 mb-3">🕐 ${lot.opening_time} – ${lot.closing_time}</p>
+
+      <!-- Actions -->
+      <div class="flex gap-2">
+        <button onclick="event.stopPropagation(); focusMapMarker(${lot.id})"
+                class="flex-1 py-1.5 px-3 text-xs font-medium bg-sky-50 text-sky-700 rounded-lg hover:bg-sky-100 transition-colors">
+          View on Map
+        </button>
+        <a href="/parking/${lot.id}/"
+           onclick="event.stopPropagation()"
+           class="flex-1 py-1.5 px-3 text-xs font-medium bg-slate-900 text-white rounded-lg hover:bg-slate-700 transition-colors text-center">
+          Details →
+        </a>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ── Focus & interaction ───────────────────────────────────────────────────
+function focusLot(id) {
+  // Remove active class from all cards
+  document.querySelectorAll('.lot-card').forEach(c => c.classList.remove('active'));
+  const card = document.getElementById(`card-${id}`);
+  if (card) {
+    card.classList.add('active');
+    card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
+  focusMapMarker(id);
+}
+
+function focusMapMarker(id) {
+  const marker = markers[id];
+  if (marker) {
+    Object.values(markers).forEach(m => m.setIcon(parkingIcon(false)));
+    marker.setIcon(parkingIcon(true));
+    map.panTo(marker.getLatLng(), { animate: true });
+    setTimeout(() => marker.openPopup(), 300);
+  }
+}
+
+function highlightCard(id) {
+  document.querySelectorAll('.lot-card').forEach(c => c.classList.remove('active'));
+  const card = document.getElementById(`card-${id}`);
+  if (card) {
+    card.classList.add('active');
+    card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
+}
+
+// ── Filter & search logic ──────────────────────────────────────────────────
+function applyFilters() {
+  const q = document.getElementById('search-input').value.trim().toLowerCase();
+  const distMax = parseFloat(document.getElementById('filter-distance').value) || null;
+  const priceFilter = document.getElementById('filter-price').value;
+  const availMin = parseInt(document.getElementById('filter-availability').value) || 0;
+
+  let result = ALL_LOTS.filter(lot => {
+    // Text search
+    if (q && !lot.name.toLowerCase().includes(q) && !lot.address.toLowerCase().includes(q)) return false;
+
+    // Distance filter (only if location known)
+    if (distMax && userLat !== null) {
+      const km = haversine(userLat, userLon, lot.latitude, lot.longitude);
+      if (km > distMax) return false;
+    }
+
+    // Price filter
+    if (priceFilter) {
+      const [pmin, pmax] = priceFilter.split('-').map(Number);
+      if (lot.price_per_hour < pmin || lot.price_per_hour > pmax) return false;
+    }
+
+    // Availability filter
+    if (availMin > 0 && lot.available_slots < availMin) return false;
+
+    return true;
+  });
+
+  filteredLots = result;
+
+  const resetBtn = document.getElementById('reset-filters-btn');
+  const hasFilter = q || distMax || priceFilter || availMin;
+  resetBtn.classList.toggle('hidden', !hasFilter);
+
+  renderCards(result);
+  renderMarkers(result);
+}
+
+// ── Render everything ─────────────────────────────────────────────────────
+function renderAll() {
+  applyFilters();
+}
+
+// ── Show location status ──────────────────────────────────────────────────
+function showLocationStatus(msg, color = 'sky') {
+  const el = document.getElementById('location-status');
+  const colorMap = {
+    sky: 'bg-sky-50 text-sky-700 border border-sky-200',
+    amber: 'bg-amber-50 text-amber-700 border border-amber-200',
+    red: 'bg-red-50 text-red-700 border border-red-200',
+  };
+  el.className = `mb-4 px-4 py-2 rounded-xl text-sm font-medium ${colorMap[color] || colorMap.sky}`;
+  el.textContent = msg;
+  el.classList.remove('hidden');
+}
+
+// ── Event listeners ───────────────────────────────────────────────────────
+document.getElementById('locate-btn').addEventListener('click', function() {
+  if (!navigator.geolocation) {
+    showLocationStatus('Geolocation is not supported by your browser.', 'red');
+    return;
+  }
+  document.getElementById('locate-label').textContent = 'Locating…';
+  navigator.geolocation.getCurrentPosition(
+    pos => {
+      document.getElementById('locate-label').textContent = 'Use My Location';
+      setDestination(pos.coords.latitude, pos.coords.longitude);
+    },
+    err => {
+      document.getElementById('locate-label').textContent = 'Use My Location';
+      showLocationStatus('Location unavailable. Showing all parking locations.', 'amber');
+    },
+    { enableHighAccuracy: false, timeout: 8000 }
+  );
+});
+
+document.getElementById('search-input').addEventListener('input', applyFilters);
+document.getElementById('filter-distance').addEventListener('change', applyFilters);
+document.getElementById('filter-price').addEventListener('change', applyFilters);
+document.getElementById('filter-availability').addEventListener('change', applyFilters);
+
+document.getElementById('reset-filters-btn').addEventListener('click', function() {
+  document.getElementById('search-input').value = '';
+  document.getElementById('filter-distance').value = '';
+  document.getElementById('filter-price').value = '';
+  document.getElementById('filter-availability').value = '';
+  this.classList.add('hidden');
+  applyFilters();
+});
+
+// ── Init ──────────────────────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', function() {
+  initMap();
+  renderAll();
+  if (ALL_LOTS.length === 0) {
+    document.getElementById('empty-message').textContent = 'No parking locations found.';
+    document.getElementById('empty-state').classList.remove('hidden');
+    document.getElementById('lot-cards-container').innerHTML = '';
+  }
+});
+</script>
+{% endblock %}
