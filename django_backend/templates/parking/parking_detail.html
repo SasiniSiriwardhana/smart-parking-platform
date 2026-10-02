@@ -1,0 +1,158 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{{ lot.name }} — Smart Parking{% endblock %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin=""/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+<style>
+  #detail-map { height: 360px; border-radius: 0.75rem; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+
+  <!-- Breadcrumb -->
+  <nav class="mb-6 flex items-center gap-2 text-sm text-slate-500">
+    <a href="{% url 'parking:finder' %}" class="hover:text-sky-600 transition-colors">Find Parking</a>
+    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+    </svg>
+    <span class="text-slate-800 font-medium truncate">{{ lot.name }}</span>
+  </nav>
+
+  <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+
+    <!-- ── Left: Details ──────────────────────────────────────────────── -->
+    <div class="lg:col-span-1 flex flex-col gap-5">
+
+      <!-- Name & Badge -->
+      <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
+        <div class="flex items-start justify-between gap-3 mb-4">
+          <div>
+            <h1 class="font-heading text-2xl font-bold text-slate-900">{{ lot.name }}</h1>
+            <p class="mt-1 text-sm text-slate-500">{{ lot.address }}</p>
+          </div>
+          {% if lot.is_open_now %}
+            <span class="flex-shrink-0 bg-emerald-100 text-emerald-700 text-xs font-semibold px-3 py-1 rounded-full">Open</span>
+          {% else %}
+            <span class="flex-shrink-0 bg-slate-100 text-slate-500 text-xs font-semibold px-3 py-1 rounded-full">Closed</span>
+          {% endif %}
+        </div>
+
+        <!-- Stats Grid -->
+        <div class="grid grid-cols-2 gap-3">
+
+          <!-- Availability -->
+          <div class="bg-sky-50 rounded-xl p-3 text-center">
+            <p class="text-2xl font-bold text-sky-700">{{ lot.available_slots }}</p>
+            <p class="text-xs text-sky-600 mt-0.5">of {{ lot.total_slots }} slots free</p>
+          </div>
+
+          <!-- Price -->
+          <div class="bg-emerald-50 rounded-xl p-3 text-center">
+            <p class="text-2xl font-bold text-emerald-700">Rs.{{ lot.price_per_hour }}</p>
+            <p class="text-xs text-emerald-600 mt-0.5">per hour</p>
+          </div>
+
+          <!-- Opening Time -->
+          <div class="bg-amber-50 rounded-xl p-3 text-center">
+            <p class="text-base font-bold text-amber-700">{{ lot.opening_time|date:"H:i" }}</p>
+            <p class="text-xs text-amber-600 mt-0.5">Opens</p>
+          </div>
+
+          <!-- Closing Time -->
+          <div class="bg-rose-50 rounded-xl p-3 text-center">
+            <p class="text-base font-bold text-rose-700">{{ lot.closing_time|date:"H:i" }}</p>
+            <p class="text-xs text-rose-600 mt-0.5">Closes</p>
+          </div>
+
+        </div>
+
+        {% if distance_str %}
+        <div class="mt-4 flex items-center gap-2 bg-slate-50 rounded-xl px-4 py-2.5">
+          <svg class="w-4 h-4 text-sky-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>
+          </svg>
+          <p class="text-sm font-medium text-slate-700">Distance: <span class="text-sky-600 font-bold">{{ distance_str }}</span></p>
+        </div>
+        {% endif %}
+      </div>
+
+      <!-- Occupancy Bar -->
+      {% with pct=lot.occupancy_percentage %}
+      <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-5">
+        <div class="flex items-center justify-between mb-2">
+          <span class="text-sm font-medium text-slate-700">Occupancy</span>
+          <span class="text-sm font-bold {% if pct >= 90 %}text-rose-600{% elif pct >= 70 %}text-amber-600{% else %}text-emerald-600{% endif %}">{{ pct }}%</span>
+        </div>
+        <div class="w-full bg-slate-100 rounded-full h-3">
+          <div class="h-3 rounded-full transition-all duration-500
+            {% if pct >= 90 %}bg-rose-500{% elif pct >= 70 %}bg-amber-400{% else %}bg-emerald-500{% endif %}"
+            style="width: {{ pct }}%"></div>
+        </div>
+        <p class="text-xs text-slate-400 mt-2">{{ lot.total_slots|add:"-1"|add:"1" }} total · {{ lot.available_slots }} free · {% widthratio pct 1 1 %} occupied</p>
+      </div>
+      {% endwith %}
+
+      <!-- Actions -->
+      <div class="flex flex-col gap-3">
+        <button onclick="focusMap()"
+                class="w-full py-2.5 px-4 bg-sky-600 text-white rounded-xl font-medium text-sm hover:bg-sky-700 transition-colors">
+          📍 View on Map
+        </button>
+        <a href="{% url 'parking:finder' %}"
+           class="w-full py-2.5 px-4 border border-slate-200 text-slate-700 rounded-xl font-medium text-sm hover:bg-slate-50 transition-colors text-center">
+          ← Back to Finder
+        </a>
+      </div>
+
+    </div>
+
+    <!-- ── Right: Map ──────────────────────────────────────────────────── -->
+    <div class="lg:col-span-2">
+      <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+        <div id="detail-map"></div>
+      </div>
+      <p class="text-xs text-slate-400 text-center mt-2">
+        Click on the map to set your destination and calculate distance.
+        Powered by <a href="https://www.openstreetmap.org" class="text-sky-600 hover:underline">OpenStreetMap</a>.
+      </p>
+    </div>
+
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const LOT = {{ lot_json|safe }};
+
+const parkingIcon = L.divIcon({
+  html: `<svg xmlns="http://www.w3.org/2000/svg" width="36" height="44" viewBox="0 0 36 44">
+    <path fill="#0284c7" d="M18 0C8 0 0 8.1 0 18c0 12.4 18 26 18 26s18-13.6 18-26C36 8.1 28 0 18 0z"/>
+    <text x="18" y="23" font-family="Outfit,sans-serif" font-size="14" font-weight="700" fill="white" text-anchor="middle">P</text>
+  </svg>`,
+  className: '', iconSize: [36,44], iconAnchor: [18,44], popupAnchor: [0,-44]
+});
+
+document.addEventListener('DOMContentLoaded', function() {
+  const map = L.map('detail-map').setView([LOT.latitude, LOT.longitude], 16);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '© OpenStreetMap contributors', maxZoom: 19
+  }).addTo(map);
+
+  L.marker([LOT.latitude, LOT.longitude], {icon: parkingIcon})
+    .addTo(map)
+    .bindPopup(`<b>${LOT.name}</b>`)
+    .openPopup();
+});
+
+function focusMap() {
+  document.getElementById('detail-map').scrollIntoView({ behavior: 'smooth' });
+}
+</script>
+{% endblock %}
