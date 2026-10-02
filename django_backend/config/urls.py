@@ -17,6 +17,10 @@ urlpatterns = [
     # Authentication & User Profiles (Day 2)
     path('', include('apps.accounts.urls', namespace='accounts')),
 
+    # Parking Lots & Map-Based Finder (Day 3)
+    path('', include('apps.parking.urls', namespace='parking')),
+
     # Django Admin Site
     path('admin/', admin.site.urls),
 ]
+

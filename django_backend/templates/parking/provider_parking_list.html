@@ -1,0 +1,153 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}My Parking Locations — Smart Parking{% endblock %}
+
+{% block content %}
+<div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+
+  <!-- Header -->
+  <div class="mb-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+    <div>
+      <h1 class="font-heading text-3xl font-bold text-slate-900">My Parking Locations</h1>
+      <p class="mt-1 text-sm text-slate-500">Manage your registered parking facilities.</p>
+    </div>
+    <a href="{% url 'parking:create' %}" id="provider-add-parking-btn"
+       class="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-sky-600 to-indigo-600 text-white text-sm font-medium shadow-md hover:from-sky-700 hover:to-indigo-700 transition-all">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+      </svg>
+      Add Parking Location
+    </a>
+  </div>
+
+  <!-- Messages -->
+  {% if messages %}
+    {% for msg in messages %}
+      <div class="mb-4 px-4 py-3 rounded-xl text-sm font-medium
+        {% if msg.tags == 'success' %}bg-emerald-50 text-emerald-800 border border-emerald-200
+        {% elif msg.tags == 'error' %}bg-red-50 text-red-800 border border-red-200
+        {% else %}bg-sky-50 text-sky-800 border border-sky-200{% endif %}">
+        {{ msg }}
+      </div>
+    {% endfor %}
+  {% endif %}
+
+  {% if lots %}
+    <!-- Stats Summary -->
+    <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8">
+      <div class="bg-white border border-slate-200 rounded-xl p-4 text-center shadow-sm">
+        <p class="text-2xl font-bold text-sky-700">{{ lots|length }}</p>
+        <p class="text-xs text-slate-500 mt-0.5">Locations</p>
+      </div>
+      <div class="bg-white border border-slate-200 rounded-xl p-4 text-center shadow-sm">
+        {% with total=0 %}
+        <p class="text-2xl font-bold text-slate-700">
+          {% for lot in lots %}{% if forloop.last %}{{ lot.total_slots }}{% endif %}{% endfor %}
+        </p>
+        {% endwith %}
+        <p class="text-xs text-slate-500 mt-0.5">Total Slots</p>
+      </div>
+      <div class="bg-white border border-slate-200 rounded-xl p-4 text-center shadow-sm">
+        <p class="text-2xl font-bold text-emerald-700">
+          {% for lot in lots %}{% if forloop.last %}{{ lot.available_slots }}{% endif %}{% endfor %}
+        </p>
+        <p class="text-xs text-slate-500 mt-0.5">Available Now</p>
+      </div>
+      <div class="bg-white border border-slate-200 rounded-xl p-4 text-center shadow-sm">
+        <p class="text-2xl font-bold text-amber-700">
+          {% for lot in lots %}{% if forloop.last %}Rs.{{ lot.price_per_hour }}{% endif %}{% endfor %}
+        </p>
+        <p class="text-xs text-slate-500 mt-0.5">Last Rate/hr</p>
+      </div>
+    </div>
+
+    <!-- Parking Lots Table -->
+    <div class="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
+      <div class="overflow-x-auto">
+        <table class="min-w-full divide-y divide-slate-100">
+          <thead class="bg-slate-50">
+            <tr>
+              <th class="px-5 py-3.5 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Name</th>
+              <th class="px-5 py-3.5 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Address</th>
+              <th class="px-5 py-3.5 text-center text-xs font-semibold text-slate-500 uppercase tracking-wider">Slots</th>
+              <th class="px-5 py-3.5 text-center text-xs font-semibold text-slate-500 uppercase tracking-wider">Available</th>
+              <th class="px-5 py-3.5 text-center text-xs font-semibold text-slate-500 uppercase tracking-wider">Rate/hr</th>
+              <th class="px-5 py-3.5 text-center text-xs font-semibold text-slate-500 uppercase tracking-wider">Hours</th>
+              <th class="px-5 py-3.5 text-center text-xs font-semibold text-slate-500 uppercase tracking-wider">Status</th>
+              <th class="px-5 py-3.5 text-center text-xs font-semibold text-slate-500 uppercase tracking-wider">Actions</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-slate-100">
+            {% for lot in lots %}
+            <tr class="hover:bg-slate-50 transition-colors">
+              <td class="px-5 py-4">
+                <p class="font-semibold text-slate-900 text-sm">{{ lot.name }}</p>
+              </td>
+              <td class="px-5 py-4">
+                <p class="text-sm text-slate-600 max-w-xs truncate">{{ lot.address }}</p>
+              </td>
+              <td class="px-5 py-4 text-center">
+                <span class="text-sm font-medium text-slate-700">{{ lot.total_slots }}</span>
+              </td>
+              <td class="px-5 py-4 text-center">
+                {% with avail=lot.available_slots total=lot.total_slots %}
+                  {% if avail == 0 %}
+                    <span class="bg-red-100 text-red-700 text-xs font-semibold px-2 py-0.5 rounded-full">{{ avail }} / {{ total }}</span>
+                  {% elif avail|floatformat:"0" < "10" %}
+                    <span class="bg-amber-100 text-amber-700 text-xs font-semibold px-2 py-0.5 rounded-full">{{ avail }} / {{ total }}</span>
+                  {% else %}
+                    <span class="bg-emerald-100 text-emerald-700 text-xs font-semibold px-2 py-0.5 rounded-full">{{ avail }} / {{ total }}</span>
+                  {% endif %}
+                {% endwith %}
+              </td>
+              <td class="px-5 py-4 text-center">
+                <span class="text-sm font-medium text-slate-700">Rs.{{ lot.price_per_hour }}</span>
+              </td>
+              <td class="px-5 py-4 text-center">
+                <span class="text-xs text-slate-500">{{ lot.opening_time|date:"H:i" }} – {{ lot.closing_time|date:"H:i" }}</span>
+              </td>
+              <td class="px-5 py-4 text-center">
+                {% if lot.is_open_now %}
+                  <span class="bg-emerald-100 text-emerald-700 text-xs font-semibold px-2 py-0.5 rounded-full">Open</span>
+                {% else %}
+                  <span class="bg-slate-100 text-slate-500 text-xs font-semibold px-2 py-0.5 rounded-full">Closed</span>
+                {% endif %}
+              </td>
+              <td class="px-5 py-4 text-center">
+                <a href="{% url 'parking:detail' lot.pk %}"
+                   class="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium bg-sky-50 text-sky-700 rounded-lg hover:bg-sky-100 transition-colors">
+                  View →
+                </a>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  {% else %}
+    <!-- Empty state -->
+    <div class="text-center py-20 bg-white border border-slate-200 rounded-2xl shadow-sm">
+      <div class="w-16 h-16 mx-auto bg-sky-50 rounded-2xl flex items-center justify-center mb-4">
+        <svg class="w-8 h-8 text-sky-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/>
+        </svg>
+      </div>
+      <h2 class="font-heading text-xl font-bold text-slate-900 mb-2">No parking locations yet</h2>
+      <p class="text-slate-500 text-sm mb-6">Get started by adding your first parking facility.</p>
+      <a href="{% url 'parking:create' %}" id="empty-add-parking-btn"
+         class="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-sky-600 to-indigo-600 text-white font-medium text-sm shadow-md hover:from-sky-700 hover:to-indigo-700 transition-all">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+        </svg>
+        Add Your First Parking Location
+      </a>
+    </div>
+  {% endif %}
+
+</div>
+{% endblock %}

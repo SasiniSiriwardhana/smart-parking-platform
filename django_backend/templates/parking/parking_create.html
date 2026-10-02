@@ -1,0 +1,242 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Add Parking Location — Smart Parking{% endblock %}
+
+{% block content %}
+<div class="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+
+  <!-- Header -->
+  <div class="mb-8">
+    <nav class="flex items-center gap-2 text-sm text-slate-500 mb-4">
+      <a href="{% url 'parking:provider_list' %}" class="hover:text-sky-600 transition-colors">My Parking</a>
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+      </svg>
+      <span class="text-slate-800 font-medium">Add Location</span>
+    </nav>
+    <h1 class="font-heading text-3xl font-bold text-slate-900">Add Parking Location</h1>
+    <p class="mt-1 text-sm text-slate-500">Register a new parking facility on the platform.</p>
+  </div>
+
+  <!-- Error summary -->
+  {% if errors.general %}
+    <div class="mb-6 bg-red-50 border border-red-200 rounded-xl p-4 text-sm text-red-700">
+      <strong>Error:</strong> {{ errors.general }}
+    </div>
+  {% endif %}
+
+  <!-- Form Card -->
+  <div class="bg-white border border-slate-200 rounded-2xl shadow-sm p-8">
+    <form method="post" novalidate>
+      {% csrf_token %}
+
+      <!-- ── Basic Info ─────────────────────────────────────────────────── -->
+      <div class="mb-6">
+        <h2 class="font-heading font-semibold text-slate-800 text-base mb-4 flex items-center gap-2">
+          <span class="w-6 h-6 rounded-lg bg-sky-100 text-sky-600 flex items-center justify-center text-xs font-bold">1</span>
+          Basic Information
+        </h2>
+
+        <div class="space-y-4">
+          <!-- Name -->
+          <div>
+            <label for="id_name" class="block text-sm font-medium text-slate-700 mb-1">Parking Name <span class="text-red-500">*</span></label>
+            <input type="text" id="id_name" name="name"
+                   value="{{ form_data.name|default:'' }}"
+                   placeholder="e.g. Central Colombo Parking"
+                   class="w-full px-4 py-2.5 rounded-xl border {% if errors.name %}border-red-400 bg-red-50{% else %}border-slate-200{% endif %} text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-200 transition-all">
+            {% if errors.name %}<p class="mt-1 text-xs text-red-600">{{ errors.name }}</p>{% endif %}
+          </div>
+
+          <!-- Address -->
+          <div>
+            <label for="id_address" class="block text-sm font-medium text-slate-700 mb-1">Address <span class="text-red-500">*</span></label>
+            <textarea id="id_address" name="address" rows="2"
+                      placeholder="e.g. 42 Galle Road, Colombo 03"
+                      class="w-full px-4 py-2.5 rounded-xl border {% if errors.address %}border-red-400 bg-red-50{% else %}border-slate-200{% endif %} text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-200 transition-all resize-none">{{ form_data.address|default:'' }}</textarea>
+            {% if errors.address %}<p class="mt-1 text-xs text-red-600">{{ errors.address }}</p>{% endif %}
+          </div>
+        </div>
+      </div>
+
+      <hr class="border-slate-100 mb-6">
+
+      <!-- ── Location ───────────────────────────────────────────────────── -->
+      <div class="mb-6">
+        <h2 class="font-heading font-semibold text-slate-800 text-base mb-1 flex items-center gap-2">
+          <span class="w-6 h-6 rounded-lg bg-indigo-100 text-indigo-600 flex items-center justify-center text-xs font-bold">2</span>
+          Geographic Location
+        </h2>
+        <p class="text-xs text-slate-400 mb-4 ml-8">Latitude (-90 to 90) · Longitude (-180 to 180)</p>
+
+        <div class="grid grid-cols-2 gap-4">
+          <!-- Latitude -->
+          <div>
+            <label for="id_latitude" class="block text-sm font-medium text-slate-700 mb-1">Latitude <span class="text-red-500">*</span></label>
+            <input type="number" id="id_latitude" name="latitude" step="any"
+                   value="{{ form_data.latitude|default:'' }}"
+                   placeholder="e.g. 6.9271"
+                   class="w-full px-4 py-2.5 rounded-xl border {% if errors.latitude %}border-red-400 bg-red-50{% else %}border-slate-200{% endif %} text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-200 transition-all">
+            {% if errors.latitude %}<p class="mt-1 text-xs text-red-600">{{ errors.latitude }}</p>{% endif %}
+          </div>
+
+          <!-- Longitude -->
+          <div>
+            <label for="id_longitude" class="block text-sm font-medium text-slate-700 mb-1">Longitude <span class="text-red-500">*</span></label>
+            <input type="number" id="id_longitude" name="longitude" step="any"
+                   value="{{ form_data.longitude|default:'' }}"
+                   placeholder="e.g. 79.8612"
+                   class="w-full px-4 py-2.5 rounded-xl border {% if errors.longitude %}border-red-400 bg-red-50{% else %}border-slate-200{% endif %} text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-200 transition-all">
+            {% if errors.longitude %}<p class="mt-1 text-xs text-red-600">{{ errors.longitude }}</p>{% endif %}
+          </div>
+        </div>
+
+        <!-- Get current location helper -->
+        <button type="button" id="get-location-btn"
+                class="mt-3 inline-flex items-center gap-2 text-sm text-sky-600 hover:text-sky-700 font-medium transition-colors">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>
+          </svg>
+          Use my current location
+        </button>
+      </div>
+
+      <hr class="border-slate-100 mb-6">
+
+      <!-- ── Capacity ────────────────────────────────────────────────────── -->
+      <div class="mb-6">
+        <h2 class="font-heading font-semibold text-slate-800 text-base mb-4 flex items-center gap-2">
+          <span class="w-6 h-6 rounded-lg bg-amber-100 text-amber-600 flex items-center justify-center text-xs font-bold">3</span>
+          Capacity & Availability
+        </h2>
+
+        <div class="grid grid-cols-2 gap-4">
+          <!-- Total Slots -->
+          <div>
+            <label for="id_total_slots" class="block text-sm font-medium text-slate-700 mb-1">Total Slots <span class="text-red-500">*</span></label>
+            <input type="number" id="id_total_slots" name="total_slots" min="1"
+                   value="{{ form_data.total_slots|default:'' }}"
+                   placeholder="e.g. 50"
+                   class="w-full px-4 py-2.5 rounded-xl border {% if errors.total_slots %}border-red-400 bg-red-50{% else %}border-slate-200{% endif %} text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-200 transition-all">
+            {% if errors.total_slots %}<p class="mt-1 text-xs text-red-600">{{ errors.total_slots }}</p>{% endif %}
+          </div>
+
+          <!-- Available Slots -->
+          <div>
+            <label for="id_available_slots" class="block text-sm font-medium text-slate-700 mb-1">
+              Available Slots
+              <span class="text-xs font-normal text-slate-400">(current)</span>
+            </label>
+            <input type="number" id="id_available_slots" name="available_slots" min="0"
+                   value="{{ form_data.available_slots|default:'0' }}"
+                   placeholder="e.g. 18"
+                   class="w-full px-4 py-2.5 rounded-xl border {% if errors.available_slots %}border-red-400 bg-red-50{% else %}border-slate-200{% endif %} text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-200 transition-all">
+            {% if errors.available_slots %}<p class="mt-1 text-xs text-red-600">{{ errors.available_slots }}</p>{% endif %}
+          </div>
+        </div>
+        <p class="mt-2 text-xs text-slate-400">Day 03: available slots is a stored value. Real-time sync is a Day 04+ feature.</p>
+      </div>
+
+      <hr class="border-slate-100 mb-6">
+
+      <!-- ── Pricing & Hours ─────────────────────────────────────────────── -->
+      <div class="mb-6">
+        <h2 class="font-heading font-semibold text-slate-800 text-base mb-4 flex items-center gap-2">
+          <span class="w-6 h-6 rounded-lg bg-emerald-100 text-emerald-600 flex items-center justify-center text-xs font-bold">4</span>
+          Pricing & Operating Hours
+        </h2>
+
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <!-- Price -->
+          <div>
+            <label for="id_price_per_hour" class="block text-sm font-medium text-slate-700 mb-1">Price/Hour (Rs.) <span class="text-red-500">*</span></label>
+            <input type="number" id="id_price_per_hour" name="price_per_hour" step="0.01" min="0"
+                   value="{{ form_data.price_per_hour|default:'' }}"
+                   placeholder="e.g. 200"
+                   class="w-full px-4 py-2.5 rounded-xl border {% if errors.price_per_hour %}border-red-400 bg-red-50{% else %}border-slate-200{% endif %} text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-200 transition-all">
+            {% if errors.price_per_hour %}<p class="mt-1 text-xs text-red-600">{{ errors.price_per_hour }}</p>{% endif %}
+          </div>
+
+          <!-- Opening Time -->
+          <div>
+            <label for="id_opening_time" class="block text-sm font-medium text-slate-700 mb-1">Opening Time <span class="text-red-500">*</span></label>
+            <input type="time" id="id_opening_time" name="opening_time"
+                   value="{{ form_data.opening_time|default:'06:00' }}"
+                   class="w-full px-4 py-2.5 rounded-xl border {% if errors.opening_time %}border-red-400 bg-red-50{% else %}border-slate-200{% endif %} text-sm text-slate-800 focus:outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-200 transition-all">
+            {% if errors.opening_time %}<p class="mt-1 text-xs text-red-600">{{ errors.opening_time }}</p>{% endif %}
+          </div>
+
+          <!-- Closing Time -->
+          <div>
+            <label for="id_closing_time" class="block text-sm font-medium text-slate-700 mb-1">Closing Time <span class="text-red-500">*</span></label>
+            <input type="time" id="id_closing_time" name="closing_time"
+                   value="{{ form_data.closing_time|default:'22:00' }}"
+                   class="w-full px-4 py-2.5 rounded-xl border {% if errors.closing_time %}border-red-400 bg-red-50{% else %}border-slate-200{% endif %} text-sm text-slate-800 focus:outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-200 transition-all">
+            {% if errors.closing_time %}<p class="mt-1 text-xs text-red-600">{{ errors.closing_time }}</p>{% endif %}
+          </div>
+        </div>
+      </div>
+
+      <!-- Submit -->
+      <div class="flex items-center gap-4 pt-2">
+        <button type="submit" id="submit-create-parking-btn"
+                class="flex-1 py-3 px-6 rounded-xl bg-gradient-to-r from-sky-600 to-indigo-600 text-white font-semibold text-sm shadow-md hover:from-sky-700 hover:to-indigo-700 transition-all">
+          Create Parking Location
+        </button>
+        <a href="{% url 'parking:provider_list' %}"
+           class="py-3 px-6 rounded-xl border border-slate-200 text-slate-700 font-medium text-sm hover:bg-slate-50 transition-colors">
+          Cancel
+        </a>
+      </div>
+
+    </form>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Get current location helper
+document.getElementById('get-location-btn').addEventListener('click', function() {
+  if (!navigator.geolocation) {
+    alert('Geolocation is not supported by your browser.');
+    return;
+  }
+  this.textContent = 'Locating…';
+  navigator.geolocation.getCurrentPosition(
+    pos => {
+      document.getElementById('id_latitude').value = pos.coords.latitude.toFixed(7);
+      document.getElementById('id_longitude').value = pos.coords.longitude.toFixed(7);
+      this.textContent = '✓ Location set from GPS';
+    },
+    err => {
+      this.textContent = 'Use my current location';
+      alert('Could not determine your location. Please enter coordinates manually.');
+    }
+  );
+});
+
+// Client-side validation (server always re-validates)
+document.querySelector('form').addEventListener('submit', function(e) {
+  const lat = parseFloat(document.getElementById('id_latitude').value);
+  const lon = parseFloat(document.getElementById('id_longitude').value);
+  const total = parseInt(document.getElementById('id_total_slots').value);
+  const avail = parseInt(document.getElementById('id_available_slots').value);
+
+  if (isNaN(lat) || lat < -90 || lat > 90) {
+    alert('Please enter a valid latitude between -90 and 90.');
+    e.preventDefault(); return;
+  }
+  if (isNaN(lon) || lon < -180 || lon > 180) {
+    alert('Please enter a valid longitude between -180 and 180.');
+    e.preventDefault(); return;
+  }
+  if (!isNaN(total) && !isNaN(avail) && avail > total) {
+    alert('Available slots cannot exceed total slots.');
+    e.preventDefault(); return;
+  }
+});
+</script>
+{% endblock %}
