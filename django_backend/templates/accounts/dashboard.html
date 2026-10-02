@@ -43,8 +43,8 @@
         <h2 class="text-lg font-semibold font-heading text-slate-800 mb-4">Your Parking Overview</h2>
         <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
 
-            <!-- Find Parking Card (Placeholder) -->
-            <div class="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm hover:shadow-md transition-shadow group">
+            <!-- Find Parking Card (Day 3 - LIVE) -->
+            <a href="{% url 'parking:finder' %}" class="bg-white rounded-2xl border border-sky-200 p-6 shadow-sm hover:shadow-md hover:border-sky-300 transition-all group">
                 <div class="w-10 h-10 rounded-xl bg-sky-50 border border-sky-100 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
                     <svg class="w-5 h-5 text-sky-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
@@ -52,24 +52,24 @@
                 </div>
                 <h3 class="font-semibold text-slate-900 mb-1">Find Parking</h3>
                 <p class="text-sm text-slate-500 mb-4">Search for available parking spaces near your destination.</p>
-                <span class="inline-flex items-center text-xs font-medium text-amber-600 bg-amber-50 border border-amber-200 px-2.5 py-1 rounded-full">
-                    🚧 Available in Day 3
+                <span class="inline-flex items-center text-xs font-medium text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-full">
+                    ✅ Day 3 Live
                 </span>
-            </div>
+            </a>
 
-            <!-- Availability Card (Placeholder) -->
-            <div class="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm hover:shadow-md transition-shadow group">
+            <!-- Parking Map Card (Day 3 - LIVE) -->
+            <a href="{% url 'parking:finder' %}" class="bg-white rounded-2xl border border-emerald-200 p-6 shadow-sm hover:shadow-md hover:border-emerald-300 transition-all group">
                 <div class="w-10 h-10 rounded-xl bg-emerald-50 border border-emerald-100 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
                     <svg class="w-5 h-5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"/>
                     </svg>
                 </div>
-                <h3 class="font-semibold text-slate-900 mb-1">Parking Availability</h3>
-                <p class="text-sm text-slate-500 mb-4">Check real-time availability and compare options.</p>
-                <span class="inline-flex items-center text-xs font-medium text-amber-600 bg-amber-50 border border-amber-200 px-2.5 py-1 rounded-full">
-                    🚧 Available in Day 3
+                <h3 class="font-semibold text-slate-900 mb-1">Parking Map</h3>
+                <p class="text-sm text-slate-500 mb-4">View parking lots on an interactive map with distance markers.</p>
+                <span class="inline-flex items-center text-xs font-medium text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-full">
+                    ✅ Day 3 Live
                 </span>
-            </div>
+            </a>
 
             <!-- Reservations Card (Placeholder) -->
             <div class="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm hover:shadow-md transition-shadow group">
@@ -94,19 +94,19 @@
         <h2 class="text-lg font-semibold font-heading text-slate-800 mb-4">Parking Operations</h2>
         <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
 
-            <!-- Parking Operations Card -->
-            <div class="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm hover:shadow-md transition-shadow group">
+            <!-- My Parking Locations Card (Day 3 - LIVE) -->
+            <a href="{% url 'parking:provider_list' %}" class="bg-white rounded-2xl border border-sky-200 p-6 shadow-sm hover:shadow-md hover:border-sky-300 transition-all group">
                 <div class="w-10 h-10 rounded-xl bg-sky-50 border border-sky-100 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
                     <svg class="w-5 h-5 text-sky-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/>
                     </svg>
                 </div>
-                <h3 class="font-semibold text-slate-900 mb-1">Parking Lots</h3>
-                <p class="text-sm text-slate-500 mb-4">Manage your parking locations and spot configurations.</p>
-                <span class="inline-flex items-center text-xs font-medium text-amber-600 bg-amber-50 border border-amber-200 px-2.5 py-1 rounded-full">
-                    🚧 Available in Day 3
-                </span>
-            </div>
+                <h3 class="font-semibold text-slate-900 mb-1">My Parking Locations</h3>
+                <p class="text-sm text-slate-500 mb-3">Manage your parking facilities, slots, and pricing.</p>
+                <div class="flex gap-2 flex-wrap">
+                    <span class="inline-flex items-center text-xs font-medium text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-full">✅ Day 3 Live</span>
+                </div>
+            </a>
 
             <!-- Occupancy Card -->
             <div class="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm hover:shadow-md transition-shadow group">
@@ -150,6 +150,20 @@
                 </svg>
                 Edit Profile
             </a>
+            <a href="{% url 'parking:finder' %}" class="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium bg-white border border-slate-200 text-slate-700 hover:bg-sky-50 hover:border-sky-200 hover:text-sky-700 transition-all shadow-sm">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>
+                </svg>
+                Find Parking
+            </a>
+            {% if user.profile.is_parking_provider %}
+            <a href="{% url 'parking:create' %}" class="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium bg-gradient-to-r from-sky-600 to-indigo-600 text-white shadow-sm hover:from-sky-700 hover:to-indigo-700 transition-all">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+                </svg>
+                Add Parking
+            </a>
+            {% endif %}
             <a href="/api/health/" target="_blank" class="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium bg-white border border-slate-200 text-slate-700 hover:bg-emerald-50 hover:border-emerald-200 hover:text-emerald-700 transition-all shadow-sm">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
