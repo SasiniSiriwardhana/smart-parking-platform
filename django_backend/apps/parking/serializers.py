@@ -6,7 +6,56 @@ Provides DRF serializers for ParkingLot CRUD and list/detail display.
 from rest_framework import serializers
 from django.contrib.auth.models import User
 
-from .models import ParkingLot
+from .models import ParkingLot, ParkingSlot, SlotStatus
+
+
+class ParkingSlotSerializer(serializers.ModelSerializer):
+    """
+    Serializer for individual ParkingSlot objects (Day 04).
+    """
+    parking_lot_name = serializers.CharField(source='parking_lot.name', read_only=True)
+    status_display = serializers.CharField(source='get_status_display', read_only=True)
+    is_available = serializers.BooleanField(read_only=True)
+    is_occupied = serializers.BooleanField(read_only=True)
+
+    class Meta:
+        model = ParkingSlot
+        fields = [
+            'id',
+            'parking_lot',
+            'parking_lot_name',
+            'slot_number',
+            'status',
+            'status_display',
+            'is_available',
+            'is_occupied',
+            'created_at',
+            'updated_at',
+        ]
+        read_only_fields = [
+            'id',
+            'parking_lot_name',
+            'status_display',
+            'is_available',
+            'is_occupied',
+            'created_at',
+            'updated_at',
+        ]
+
+
+class ParkingAvailabilitySerializer(serializers.Serializer):
+    """
+    Real-Time Availability Summary Serializer for WebSockets and REST (Day 04).
+    """
+    parking_id = serializers.IntegerField(source='pk')
+    name = serializers.CharField()
+    total_slots = serializers.IntegerField()
+    occupied_slots = serializers.IntegerField()
+    available_slots = serializers.IntegerField()
+    occupancy_percentage = serializers.FloatField()
+    is_full = serializers.BooleanField()
+    is_available = serializers.BooleanField()
+    is_open_now = serializers.BooleanField()
 
 
 class ParkingLotSerializer(serializers.ModelSerializer):
@@ -17,10 +66,13 @@ class ParkingLotSerializer(serializers.ModelSerializer):
         owner_username  – resolved from owner FK
         is_open_now     – computed property
         occupancy_pct   – computed property
+        occupied_slots  – computed property
     """
     owner_username = serializers.SerializerMethodField()
     is_open_now = serializers.SerializerMethodField()
     occupancy_percentage = serializers.SerializerMethodField()
+    occupied_slots = serializers.SerializerMethodField()
+    slots = ParkingSlotSerializer(many=True, read_only=True)
 
     class Meta:
         model = ParkingLot
@@ -34,11 +86,13 @@ class ParkingLotSerializer(serializers.ModelSerializer):
             'longitude',
             'total_slots',
             'available_slots',
+            'occupied_slots',
             'price_per_hour',
             'opening_time',
             'closing_time',
             'is_open_now',
             'occupancy_percentage',
+            'slots',
             'created_at',
             'updated_at',
         ]
@@ -48,6 +102,8 @@ class ParkingLotSerializer(serializers.ModelSerializer):
             'owner_username',
             'is_open_now',
             'occupancy_percentage',
+            'occupied_slots',
+            'slots',
             'created_at',
             'updated_at',
         ]
@@ -60,6 +116,9 @@ class ParkingLotSerializer(serializers.ModelSerializer):
 
     def get_occupancy_percentage(self, obj):
         return obj.occupancy_percentage
+
+    def get_occupied_slots(self, obj):
+        return obj.occupied_slots
 
     def validate(self, data):
         """Cross-field validation: available_slots <= total_slots."""
@@ -99,11 +158,12 @@ class ParkingLotSerializer(serializers.ModelSerializer):
 class ParkingLotListSerializer(serializers.ModelSerializer):
     """
     Lightweight serializer for parking list/finder views.
-    Includes distance_km when provided by the view context.
+    Includes distance_km and occupied_slots when serialized.
     """
     owner_username = serializers.SerializerMethodField()
     is_open_now = serializers.SerializerMethodField()
     occupancy_percentage = serializers.SerializerMethodField()
+    occupied_slots = serializers.SerializerMethodField()
     distance_km = serializers.SerializerMethodField()
 
     class Meta:
@@ -116,6 +176,7 @@ class ParkingLotListSerializer(serializers.ModelSerializer):
             'longitude',
             'total_slots',
             'available_slots',
+            'occupied_slots',
             'price_per_hour',
             'opening_time',
             'closing_time',
@@ -134,6 +195,9 @@ class ParkingLotListSerializer(serializers.ModelSerializer):
     def get_occupancy_percentage(self, obj):
         return obj.occupancy_percentage
 
+    def get_occupied_slots(self, obj):
+        return obj.occupied_slots
+
     def get_distance_km(self, obj):
         """Return pre-calculated distance injected by the view, or None."""
         distances = self.context.get('distances', {})
@@ -141,3 +205,4 @@ class ParkingLotListSerializer(serializers.ModelSerializer):
         if dist is not None:
             return round(dist, 2)
         return None
+
