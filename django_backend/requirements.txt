@@ -20,3 +20,8 @@ django-cors-headers>=4.6.0,<5.0.0
 # JSON Web Token Authentication for Django REST Framework
 djangorestframework-simplejwt>=5.3.1,<5.4.0
 
+# Real-Time WebSocket communication (Day 04)
+channels>=4.3.0,<5.0.0
+daphne>=4.2.0,<5.0.0
+
+

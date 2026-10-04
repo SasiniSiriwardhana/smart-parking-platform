@@ -424,3 +424,273 @@ class ParkingTemplateViewsTest(TestCase):
         response = self.client.post(url, post_data)
         self.assertEqual(response.status_code, 302)
         self.assertTrue(ParkingLot.objects.filter(name='Galle Face Green Park').exists())
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+#  Day 04: Real-Time Parking Availability & WebSockets Test Suite
+# ══════════════════════════════════════════════════════════════════════════════
+
+from channels.testing import WebsocketCommunicator
+from config.asgi import application
+from apps.parking.models import ParkingSlot, SlotStatus
+
+
+class Day04RealTimeAvailabilityTest(TestCase):
+    """
+    Comprehensive tests for Day 04:
+    - ParkingSlot model & status choices
+    - Dynamic occupancy & availability calculations
+    - Simulated car entry & exit logic
+    - Edge cases (full parking, empty parking)
+    - REST API endpoints for availability and simulation
+    - Provider & Customer authorization enforcement
+    - WebSocket consumers & live broadcasts
+    """
+
+    def setUp(self):
+        # 1. Provider 1
+        self.provider = User.objects.create_user(
+            username='provider_d4',
+            email='provider_d4@example.com',
+            password='Password123!'
+        )
+        UserProfile.objects.create(
+            user=self.provider,
+            role=UserRole.PARKING_PROVIDER,
+            phone_number='0771234567'
+        )
+
+        # 2. Provider 2 (other provider)
+        self.other_provider = User.objects.create_user(
+            username='other_provider_d4',
+            email='other_d4@example.com',
+            password='Password123!'
+        )
+        UserProfile.objects.create(
+            user=self.other_provider,
+            role=UserRole.PARKING_PROVIDER,
+            phone_number='0777654321'
+        )
+
+        # 3. Customer
+        self.customer = User.objects.create_user(
+            username='customer_d4',
+            email='customer_d4@example.com',
+            password='Password123!'
+        )
+        UserProfile.objects.create(
+            user=self.customer,
+            role=UserRole.CUSTOMER,
+            phone_number='0779998888'
+        )
+
+        # 4. Parking Lot: Total = 5, initial available = 3 (2 occupied)
+        self.lot = ParkingLot.objects.create(
+            owner=self.provider,
+            name='Day 04 Test Plaza',
+            address='100 Tech Park, Colombo 03',
+            latitude=Decimal('6.9200000'),
+            longitude=Decimal('79.8600000'),
+            total_slots=5,
+            available_slots=3,
+            price_per_hour=Decimal('100.00'),
+            opening_time=datetime.time(6, 0),
+            closing_time=datetime.time(22, 0)
+        )
+        self.lot.generate_default_slots()
+
+        self.api_client = APIClient()
+
+    # 1. Parking slot creation
+    def test_parking_slot_creation(self):
+        """ParkingSlot instances are created with proper attributes."""
+        slot = self.lot.slots.first()
+        self.assertIsNotNone(slot)
+        self.assertEqual(slot.parking_lot, self.lot)
+        self.assertTrue(slot.slot_number.startswith('A'))
+        self.assertIn(slot.status, [SlotStatus.AVAILABLE, SlotStatus.OCCUPIED])
+
+    # 2. Slot status AVAILABLE property and methods
+    def test_slot_status_available(self):
+        """Slot is_available returns True and is_occupied returns False for AVAILABLE slot."""
+        slot = self.lot.slots.filter(status=SlotStatus.AVAILABLE).first()
+        self.assertIsNotNone(slot)
+        self.assertTrue(slot.is_available)
+        self.assertFalse(slot.is_occupied)
+
+    # 3. Slot status OCCUPIED property and methods
+    def test_slot_status_occupied(self):
+        """Slot is_occupied returns True and is_available returns False for OCCUPIED slot."""
+        slot = self.lot.slots.filter(status=SlotStatus.OCCUPIED).first()
+        self.assertIsNotNone(slot)
+        self.assertTrue(slot.is_occupied)
+        self.assertFalse(slot.is_available)
+
+    # 4. Occupancy count calculation
+    def test_occupied_count_calculation(self):
+        """Occupied slots count equals number of slots with OCCUPIED status."""
+        occupied_count = self.lot.slots.filter(status=SlotStatus.OCCUPIED).count()
+        self.assertEqual(self.lot.occupied_slots, 2)
+        self.assertEqual(self.lot.occupied_slots, occupied_count)
+
+    # 5. Available count calculation
+    def test_available_count_calculation(self):
+        """Available slots count equals number of slots with AVAILABLE status."""
+        available_count = self.lot.slots.filter(status=SlotStatus.AVAILABLE).count()
+        self.assertEqual(self.lot.available_slots, 3)
+        self.assertEqual(self.lot.available_slots, available_count)
+
+    # 6. Total = Occupied + Available
+    def test_total_slots_equals_occupied_plus_available(self):
+        """The invariant Total = Occupied + Available must always hold."""
+        self.assertEqual(
+            self.lot.total_slots,
+            self.lot.occupied_slots + self.lot.available_slots
+        )
+
+    # 7. Car entry changes AVAILABLE -> OCCUPIED
+    def test_car_entry_changes_slot_to_occupied(self):
+        """Simulating car entry flips first available slot to OCCUPIED and updates count."""
+        initial_avail = self.lot.available_slots
+        initial_occ = self.lot.occupied_slots
+
+        success, msg, slot = self.lot.simulate_car_entry()
+        self.assertTrue(success)
+        self.assertIsNotNone(slot)
+        self.assertEqual(slot.status, SlotStatus.OCCUPIED)
+
+        self.assertEqual(self.lot.available_slots, initial_avail - 1)
+        self.assertEqual(self.lot.occupied_slots, initial_occ + 1)
+
+    # 8. Car exit changes OCCUPIED -> AVAILABLE
+    def test_car_exit_changes_slot_to_available(self):
+        """Simulating car exit flips an occupied slot to AVAILABLE and updates count."""
+        initial_avail = self.lot.available_slots
+        initial_occ = self.lot.occupied_slots
+
+        success, msg, slot = self.lot.simulate_car_exit()
+        self.assertTrue(success)
+        self.assertIsNotNone(slot)
+        self.assertEqual(slot.status, SlotStatus.AVAILABLE)
+
+        self.assertEqual(self.lot.available_slots, initial_avail + 1)
+        self.assertEqual(self.lot.occupied_slots, initial_occ - 1)
+
+    # 9. Car entry when parking is full
+    def test_car_entry_when_full(self):
+        """Car entry on a full parking lot returns False and 'Parking is full.'"""
+        # Fill all slots
+        for s in self.lot.slots.all():
+            s.occupy()
+        self.lot.sync_slot_counts()
+
+        self.assertEqual(self.lot.available_slots, 0)
+        self.assertTrue(self.lot.is_full)
+
+        success, msg, slot = self.lot.simulate_car_entry()
+        self.assertFalse(success)
+        self.assertEqual(msg, "Parking is full.")
+        self.assertIsNone(slot)
+        self.assertEqual(self.lot.available_slots, 0)
+
+    # 10. Car exit when no occupied slots
+    def test_car_exit_when_no_occupied_slots(self):
+        """Car exit on an empty parking lot returns False and 'No occupied slots available.'"""
+        # Vacate all slots
+        for s in self.lot.slots.all():
+            s.vacate()
+        self.lot.sync_slot_counts()
+
+        self.assertEqual(self.lot.occupied_slots, 0)
+
+        success, msg, slot = self.lot.simulate_car_exit()
+        self.assertFalse(success)
+        self.assertEqual(msg, "No occupied slots available.")
+        self.assertIsNone(slot)
+        self.assertEqual(self.lot.occupied_slots, 0)
+
+    # 11. Unauthorized availability modification (Customer forbidden)
+    def test_unauthorized_customer_cannot_simulate_entry(self):
+        """Customers cannot trigger simulation endpoints (403 Forbidden)."""
+        self.api_client.force_authenticate(user=self.customer)
+        url = reverse('parking:api_simulate_entry', kwargs={'pk': self.lot.pk})
+        response = self.api_client.post(url)
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    # 12. Provider authorization (Cannot simulate other provider's lot)
+    def test_provider_cannot_simulate_other_provider_lot(self):
+        """A provider cannot trigger simulation for another provider's parking lot (403 Forbidden)."""
+        self.api_client.force_authenticate(user=self.other_provider)
+        url = reverse('parking:api_simulate_entry', kwargs={'pk': self.lot.pk})
+        response = self.api_client.post(url)
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    # 13. Availability API
+    def test_availability_api_endpoint(self):
+        """GET /api/parking/<id>/availability/ returns current status summary."""
+        url = reverse('parking:api_availability', kwargs={'pk': self.lot.pk})
+        response = self.api_client.get(url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['parking_id'], self.lot.pk)
+        self.assertEqual(response.data['total_slots'], 5)
+        self.assertEqual(response.data['available_slots'], 3)
+        self.assertEqual(response.data['occupied_slots'], 2)
+
+    # 14. Provider simulation entry via API
+    def test_provider_simulate_entry_api_success(self):
+        """Owner can simulate car entry via POST /api/parking/<id>/simulate-entry/."""
+        self.api_client.force_authenticate(user=self.provider)
+        url = reverse('parking:api_simulate_entry', kwargs={'pk': self.lot.pk})
+        response = self.api_client.post(url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['availability']['available_slots'], 2)
+        self.assertEqual(response.data['availability']['occupied_slots'], 3)
+
+    # 15. Provider simulation exit via API
+    def test_provider_simulate_exit_api_success(self):
+        """Owner can simulate car exit via POST /api/parking/<id>/simulate-exit/."""
+        self.api_client.force_authenticate(user=self.provider)
+        url = reverse('parking:api_simulate_exit', kwargs={'pk': self.lot.pk})
+        response = self.api_client.post(url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['availability']['available_slots'], 4)
+        self.assertEqual(response.data['availability']['occupied_slots'], 1)
+
+    # 16. Slots API endpoint
+    def test_slots_api_endpoint(self):
+        """GET /api/parking/<id>/slots/ returns individual slot records."""
+        url = reverse('parking:api_slots', kwargs={'pk': self.lot.pk})
+        response = self.api_client.get(url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data['slots']), 5)
+
+    # 17. WebSocket connection & initial snapshot
+    async def test_websocket_availability_connection(self):
+        """WebSocket client connects and receives initial availability snapshot."""
+        communicator = WebsocketCommunicator(
+            application,
+            f"/ws/parking/{self.lot.pk}/availability/"
+        )
+        connected, _ = await communicator.connect()
+        self.assertTrue(connected)
+
+        # First message should be the initial snapshot
+        response = await communicator.receive_json_from()
+        self.assertEqual(response['type'], 'availability_snapshot')
+        self.assertEqual(response['data']['parking_id'], self.lot.pk)
+        self.assertEqual(response['data']['total_slots'], 5)
+        self.assertEqual(len(response['data']['slots']), 5)
+
+        await communicator.disconnect()
+
+    # 18. WebSocket rejects non-existent parking lot
+    async def test_websocket_invalid_parking_id(self):
+        """WebSocket connection with invalid parking lot ID closes with 4004."""
+        communicator = WebsocketCommunicator(
+            application,
+            "/ws/parking/999999/availability/"
+        )
+        connected, close_code = await communicator.connect()
+        self.assertFalse(connected)
+        self.assertEqual(close_code, 4004)
+

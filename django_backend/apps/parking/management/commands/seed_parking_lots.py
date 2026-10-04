@@ -149,8 +149,12 @@ class Command(BaseCommand):
             )
             if created:
                 count += 1
-                self.stdout.write(f"  + Added: {lot.name} ({lot.available_slots}/{lot.total_slots} slots @ Rs. {lot.price_per_hour}/hr)")
+                lot.generate_default_slots()
+                self.stdout.write(f"  + Added: {lot.name} ({lot.available_slots}/{lot.total_slots} slots, {lot.slots.count()} slot records created)")
             else:
-                self.stdout.write(f"  - Already exists: {lot.name}")
+                if not lot.slots.exists():
+                    lot.generate_default_slots()
+                self.stdout.write(f"  - Already exists: {lot.name} ({lot.slots.count()} slots)")
 
         self.stdout.write(self.style.SUCCESS(f'\nSeeding complete! Added {count} new parking lots. Total in DB: {ParkingLot.objects.count()}'))
+

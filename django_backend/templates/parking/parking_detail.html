@@ -1,34 +1,55 @@
 {% extends 'base.html' %}
 {% load static %}
 
-{% block title %}{{ lot.name }} — Smart Parking{% endblock %}
+{% block title %}{{ lot.name }} — Real-Time Parking Availability{% endblock %}
 
 {% block extra_head %}
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin=""/>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
 <style>
-  #detail-map { height: 360px; border-radius: 0.75rem; }
+  #detail-map { height: 320px; border-radius: 0.75rem; }
+  .slot-card {
+    transition: all 0.25s ease-in-out;
+  }
+  .slot-card:hover {
+    transform: translateY(-2px);
+  }
+  .pulse-live {
+    animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  }
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: .4; }
+  }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+<div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
 
-  <!-- Breadcrumb -->
-  <nav class="mb-6 flex items-center gap-2 text-sm text-slate-500">
-    <a href="{% url 'parking:finder' %}" class="hover:text-sky-600 transition-colors">Find Parking</a>
-    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
-    </svg>
-    <span class="text-slate-800 font-medium truncate">{{ lot.name }}</span>
-  </nav>
+  <!-- Breadcrumb & Real-Time Status Indicator -->
+  <div class="mb-6 flex flex-wrap items-center justify-between gap-4">
+    <nav class="flex items-center gap-2 text-sm text-slate-500">
+      <a href="{% url 'parking:finder' %}" class="hover:text-sky-600 transition-colors">Find Parking</a>
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+      </svg>
+      <span class="text-slate-800 font-semibold truncate">{{ lot.name }}</span>
+    </nav>
+
+    <!-- Live WebSocket Indicator -->
+    <div id="ws-badge" class="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold bg-amber-50 text-amber-700 border border-amber-200">
+      <span class="w-2 h-2 rounded-full bg-amber-500 pulse-live"></span>
+      <span id="ws-status-text">Connecting to Live Feed…</span>
+    </div>
+  </div>
 
   <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
 
-    <!-- ── Left: Details ──────────────────────────────────────────────── -->
-    <div class="lg:col-span-1 flex flex-col gap-5">
+    <!-- ── Left Column: Lot Overview & Real-Time Counters ──────────────── -->
+    <div class="lg:col-span-1 flex flex-col gap-6">
 
-      <!-- Name & Badge -->
+      <!-- Main Info Card -->
       <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
         <div class="flex items-start justify-between gap-3 mb-4">
           <div>
@@ -42,85 +63,139 @@
           {% endif %}
         </div>
 
-        <!-- Stats Grid -->
-        <div class="grid grid-cols-2 gap-3">
+        <!-- Real-Time Counter Grid -->
+        <div class="grid grid-cols-2 gap-3 mb-4">
+          <!-- Total Slots -->
+          <div class="bg-slate-50 rounded-xl p-3 text-center border border-slate-100">
+            <p id="total-slots-counter" class="text-2xl font-bold text-slate-800">{{ lot.total_slots }}</p>
+            <p class="text-xs text-slate-500 mt-0.5">Total Capacity</p>
+          </div>
 
-          <!-- Availability -->
-          <div class="bg-sky-50 rounded-xl p-3 text-center">
-            <p class="text-2xl font-bold text-sky-700">{{ lot.available_slots }}</p>
-            <p class="text-xs text-sky-600 mt-0.5">of {{ lot.total_slots }} slots free</p>
+          <!-- Available Slots -->
+          <div class="bg-emerald-50 rounded-xl p-3 text-center border border-emerald-100">
+            <p id="available-slots-counter" class="text-2xl font-bold text-emerald-700">{{ lot.available_slots }}</p>
+            <p class="text-xs text-emerald-600 font-medium mt-0.5">🟢 Available</p>
+          </div>
+
+          <!-- Occupied Slots -->
+          <div class="bg-rose-50 rounded-xl p-3 text-center border border-rose-100">
+            <p id="occupied-slots-counter" class="text-2xl font-bold text-rose-700">{{ lot.occupied_slots }}</p>
+            <p class="text-xs text-rose-600 font-medium mt-0.5">🔴 Occupied</p>
           </div>
 
           <!-- Price -->
-          <div class="bg-emerald-50 rounded-xl p-3 text-center">
-            <p class="text-2xl font-bold text-emerald-700">Rs.{{ lot.price_per_hour }}</p>
-            <p class="text-xs text-emerald-600 mt-0.5">per hour</p>
+          <div class="bg-sky-50 rounded-xl p-3 text-center border border-sky-100">
+            <p class="text-2xl font-bold text-sky-700">Rs.{{ lot.price_per_hour }}</p>
+            <p class="text-xs text-sky-600 mt-0.5">Per Hour</p>
           </div>
+        </div>
 
-          <!-- Opening Time -->
-          <div class="bg-amber-50 rounded-xl p-3 text-center">
-            <p class="text-base font-bold text-amber-700">{{ lot.opening_time|date:"H:i" }}</p>
-            <p class="text-xs text-amber-600 mt-0.5">Opens</p>
+        <!-- Occupancy Percentage Bar -->
+        <div class="pt-2 border-t border-slate-100">
+          <div class="flex items-center justify-between mb-1.5 text-xs">
+            <span class="font-medium text-slate-600">Real-Time Occupancy</span>
+            <span id="occupancy-pct-text" class="font-bold text-slate-800">{{ lot.occupancy_percentage }}%</span>
           </div>
-
-          <!-- Closing Time -->
-          <div class="bg-rose-50 rounded-xl p-3 text-center">
-            <p class="text-base font-bold text-rose-700">{{ lot.closing_time|date:"H:i" }}</p>
-            <p class="text-xs text-rose-600 mt-0.5">Closes</p>
+          <div class="w-full bg-slate-100 rounded-full h-2.5 overflow-hidden">
+            <div id="occupancy-bar" class="h-2.5 rounded-full transition-all duration-500 {% if lot.occupancy_percentage >= 90 %}bg-rose-500{% elif lot.occupancy_percentage >= 70 %}bg-amber-400{% else %}bg-emerald-500{% endif %}"
+                 style="width: {{ lot.occupancy_percentage }}%"></div>
           </div>
-
         </div>
 
         {% if distance_str %}
-        <div class="mt-4 flex items-center gap-2 bg-slate-50 rounded-xl px-4 py-2.5">
+        <div class="mt-4 flex items-center gap-2 bg-slate-50 rounded-xl px-4 py-2.5 text-xs text-slate-600">
           <svg class="w-4 h-4 text-sky-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                   d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>
           </svg>
-          <p class="text-sm font-medium text-slate-700">Distance: <span class="text-sky-600 font-bold">{{ distance_str }}</span></p>
+          <span>Distance: <b class="text-sky-700">{{ distance_str }}</b></span>
         </div>
         {% endif %}
       </div>
 
-      <!-- Occupancy Bar -->
-      {% with pct=lot.occupancy_percentage %}
-      <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-5">
-        <div class="flex items-center justify-between mb-2">
-          <span class="text-sm font-medium text-slate-700">Occupancy</span>
-          <span class="text-sm font-bold {% if pct >= 90 %}text-rose-600{% elif pct >= 70 %}text-amber-600{% else %}text-emerald-600{% endif %}">{{ pct }}%</span>
+      <!-- Provider / Dev Simulation Controls -->
+      {% if can_simulate %}
+      <div class="bg-gradient-to-br from-indigo-50 to-sky-50 rounded-2xl border border-indigo-100 p-6 shadow-sm">
+        <div class="flex items-center gap-2 mb-2">
+          <span class="text-lg">🧪</span>
+          <h2 class="text-base font-bold text-indigo-950">Simulation Controls</h2>
         </div>
-        <div class="w-full bg-slate-100 rounded-full h-3">
-          <div class="h-3 rounded-full transition-all duration-500
-            {% if pct >= 90 %}bg-rose-500{% elif pct >= 70 %}bg-amber-400{% else %}bg-emerald-500{% endif %}"
-            style="width: {{ pct }}%"></div>
-        </div>
-        <p class="text-xs text-slate-400 mt-2">{{ lot.total_slots|add:"-1"|add:"1" }} total · {{ lot.available_slots }} free · {% widthratio pct 1 1 %} occupied</p>
-      </div>
-      {% endwith %}
+        <p class="text-xs text-indigo-800/80 mb-4">
+          Simulate IoT parking sensors triggering entry/exit events in real time. Connected clients will update instantly via WebSockets.
+        </p>
 
-      <!-- Actions -->
-      <div class="flex flex-col gap-3">
-        <button onclick="focusMap()"
-                class="w-full py-2.5 px-4 bg-sky-600 text-white rounded-xl font-medium text-sm hover:bg-sky-700 transition-colors">
-          📍 View on Map
-        </button>
-        <a href="{% url 'parking:finder' %}"
-           class="w-full py-2.5 px-4 border border-slate-200 text-slate-700 rounded-xl font-medium text-sm hover:bg-slate-50 transition-colors text-center">
-          ← Back to Finder
-        </a>
+        <div class="flex flex-col gap-2.5">
+          <button id="btn-simulate-entry"
+                  onclick="triggerSimulation('entry')"
+                  class="w-full py-2.5 px-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-semibold text-sm shadow-sm transition-all flex items-center justify-center gap-2">
+            <span>🚗</span> Simulate Car Entry
+          </button>
+          <button id="btn-simulate-exit"
+                  onclick="triggerSimulation('exit')"
+                  class="w-full py-2.5 px-4 bg-rose-600 hover:bg-rose-700 text-white rounded-xl font-semibold text-sm shadow-sm transition-all flex items-center justify-center gap-2">
+            <span>💨</span> Simulate Car Exit
+          </button>
+        </div>
+
+        <div id="sim-feedback" class="mt-3 text-xs font-medium text-indigo-900 bg-white/70 border border-indigo-100 rounded-lg p-2.5 hidden">
+        </div>
+      </div>
+      {% endif %}
+
+      <!-- Map Card -->
+      <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden p-4">
+        <h3 class="text-sm font-semibold text-slate-800 mb-2">Facility Location</h3>
+        <div id="detail-map"></div>
       </div>
 
     </div>
 
-    <!-- ── Right: Map ──────────────────────────────────────────────────── -->
+    <!-- ── Right Column: Parking Slot Grid ────────────────────────────── -->
     <div class="lg:col-span-2">
-      <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-        <div id="detail-map"></div>
+      <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
+        
+        <div class="flex flex-wrap items-center justify-between gap-4 mb-6 pb-4 border-b border-slate-100">
+          <div>
+            <h2 class="font-heading text-xl font-bold text-slate-900">Parking Slot Layout</h2>
+            <p class="text-xs text-slate-500 mt-0.5">Live status updates automatically as vehicles occupy or vacate slots.</p>
+          </div>
+
+          <!-- Legend -->
+          <div class="flex items-center gap-4 text-xs">
+            <div class="flex items-center gap-1.5 font-medium text-emerald-700">
+              <span class="w-3 h-3 rounded-md bg-emerald-500"></span> Available (<span id="legend-avail">{{ lot.available_slots }}</span>)
+            </div>
+            <div class="flex items-center gap-1.5 font-medium text-rose-700">
+              <span class="w-3 h-3 rounded-md bg-rose-500"></span> Occupied (<span id="legend-occ">{{ lot.occupied_slots }}</span>)
+            </div>
+          </div>
+        </div>
+
+        <!-- Responsive Slot Grid -->
+        <div id="slots-grid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 max-h-[600px] overflow-y-auto p-1">
+          {% for slot in slots %}
+          <div id="slot-card-{{ slot.id }}"
+               data-slot-id="{{ slot.id }}"
+               data-slot-number="{{ slot.slot_number }}"
+               class="slot-card p-3 rounded-xl border flex flex-col items-center justify-center text-center select-none {% if slot.is_available %}bg-emerald-50/70 border-emerald-200 text-emerald-900{% else %}bg-rose-50/70 border-rose-200 text-rose-900{% endif %}">
+            <div class="text-xs font-bold text-slate-500 mb-1 font-mono">{{ slot.slot_number }}</div>
+            <div class="slot-badge text-xs font-semibold px-2 py-0.5 rounded-full {% if slot.is_available %}bg-emerald-100 text-emerald-800{% else %}bg-rose-100 text-rose-800{% endif %}">
+              {% if slot.is_available %}🟢 Free{% else %}🔴 Occupied{% endif %}
+            </div>
+            {% if can_simulate %}
+            <button onclick="toggleSlot({{ slot.id }})" class="mt-2 text-[10px] text-slate-400 hover:text-indigo-600 underline">
+              Toggle
+            </button>
+            {% endif %}
+          </div>
+          {% empty %}
+          <div class="col-span-full py-8 text-center text-slate-400 text-sm">
+            No parking slots configured for this facility yet.
+          </div>
+          {% endfor %}
+        </div>
+
       </div>
-      <p class="text-xs text-slate-400 text-center mt-2">
-        Click on the map to set your destination and calculate distance.
-        Powered by <a href="https://www.openstreetmap.org" class="text-sky-600 hover:underline">OpenStreetMap</a>.
-      </p>
     </div>
 
   </div>
@@ -130,29 +205,212 @@
 {% block extra_js %}
 <script>
 const LOT = {{ lot_json|safe }};
+const CAN_SIMULATE = {{ can_simulate|yesno:"true,false" }};
+let socket = null;
 
-const parkingIcon = L.divIcon({
-  html: `<svg xmlns="http://www.w3.org/2000/svg" width="36" height="44" viewBox="0 0 36 44">
-    <path fill="#0284c7" d="M18 0C8 0 0 8.1 0 18c0 12.4 18 26 18 26s18-13.6 18-26C36 8.1 28 0 18 0z"/>
-    <text x="18" y="23" font-family="Outfit,sans-serif" font-size="14" font-weight="700" fill="white" text-anchor="middle">P</text>
-  </svg>`,
-  className: '', iconSize: [36,44], iconAnchor: [18,44], popupAnchor: [0,-44]
-});
-
+// Initialize Map
 document.addEventListener('DOMContentLoaded', function() {
-  const map = L.map('detail-map').setView([LOT.latitude, LOT.longitude], 16);
+  const map = L.map('detail-map').setView([LOT.latitude, LOT.longitude], 15);
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     attribution: '© OpenStreetMap contributors', maxZoom: 19
   }).addTo(map);
 
+  const parkingIcon = L.divIcon({
+    html: `<svg xmlns="http://www.w3.org/2000/svg" width="32" height="40" viewBox="0 0 36 44">
+      <path fill="#0284c7" d="M18 0C8 0 0 8.1 0 18c0 12.4 18 26 18 26s18-13.6 18-26C36 8.1 28 0 18 0z"/>
+      <text x="18" y="23" font-family="Outfit,sans-serif" font-size="14" font-weight="700" fill="white" text-anchor="middle">P</text>
+    </svg>`,
+    className: '', iconSize: [32,40], iconAnchor: [16,40], popupAnchor: [0,-40]
+  });
+
   L.marker([LOT.latitude, LOT.longitude], {icon: parkingIcon})
     .addTo(map)
-    .bindPopup(`<b>${LOT.name}</b>`)
+    .bindPopup(`<b>${LOT.name}</b><br>${LOT.address}`)
     .openPopup();
+
+  // Connect WebSocket
+  initWebSocket();
 });
 
-function focusMap() {
-  document.getElementById('detail-map').scrollIntoView({ behavior: 'smooth' });
+// WebSocket Connection Manager
+function initWebSocket() {
+  const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+  const parkingId = LOT.parking_id || LOT.id;
+  const wsUrl = `${protocol}//${window.location.host}/ws/parking/${parkingId}/availability/`;
+
+  setWsStatus('connecting', 'Connecting to Live Feed…');
+
+  socket = new WebSocket(wsUrl);
+
+  socket.onopen = function() {
+    setWsStatus('connected', '🟢 Live Synced (WebSocket)');
+  };
+
+  socket.onmessage = function(event) {
+    try {
+      const msg = JSON.parse(event.data);
+      if (msg.type === 'availability_update' || msg.type === 'availability_snapshot') {
+        applyAvailabilityUpdate(msg.data);
+      } else if (msg.type === 'slot_update') {
+        applySlotUpdate(msg.data);
+      }
+    } catch (err) {
+      console.error('Error handling WebSocket message:', err);
+    }
+  };
+
+  socket.onerror = function(error) {
+    console.warn('WebSocket encountered an issue:', error);
+    setWsStatus('error', '⚪ Real-time connection unavailable');
+  };
+
+  socket.onclose = function(e) {
+    setWsStatus('disconnected', '⚪ Real-time connection offline');
+    // Try reconnecting in 4 seconds
+    setTimeout(initWebSocket, 4000);
+  };
+}
+
+function setWsStatus(status, text) {
+  const badge = document.getElementById('ws-badge');
+  const label = document.getElementById('ws-status-text');
+  if (!badge || !label) return;
+
+  label.textContent = text;
+  badge.className = 'inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold ';
+
+  if (status === 'connected') {
+    badge.className += 'bg-emerald-50 text-emerald-700 border border-emerald-200';
+    badge.innerHTML = `<span class="w-2 h-2 rounded-full bg-emerald-500 pulse-live"></span><span>${text}</span>`;
+  } else if (status === 'connecting') {
+    badge.className += 'bg-amber-50 text-amber-700 border border-amber-200';
+    badge.innerHTML = `<span class="w-2 h-2 rounded-full bg-amber-500 pulse-live"></span><span>${text}</span>`;
+  } else {
+    badge.className += 'bg-slate-100 text-slate-600 border border-slate-200';
+    badge.innerHTML = `<span class="w-2 h-2 rounded-full bg-slate-400"></span><span>${text}</span>`;
+  }
+}
+
+// Update UI on Availability Broadcast
+function applyAvailabilityUpdate(data) {
+  if (!data) return;
+
+  // Counters
+  const availEl = document.getElementById('available-slots-counter');
+  const occEl = document.getElementById('occupied-slots-counter');
+  const totalEl = document.getElementById('total-slots-counter');
+  const pctEl = document.getElementById('occupancy-pct-text');
+  const barEl = document.getElementById('occupancy-bar');
+  const legAvail = document.getElementById('legend-avail');
+  const legOcc = document.getElementById('legend-occ');
+
+  if (availEl) availEl.textContent = data.available_slots;
+  if (occEl) occEl.textContent = data.occupied_slots;
+  if (totalEl) totalEl.textContent = data.total_slots;
+  if (legAvail) legAvail.textContent = data.available_slots;
+  if (legOcc) legOcc.textContent = data.occupied_slots;
+
+  const pct = data.occupancy_percentage || 0;
+  if (pctEl) pctEl.textContent = `${pct}%`;
+  if (barEl) {
+    barEl.style.width = `${pct}%`;
+    barEl.className = 'h-2.5 rounded-full transition-all duration-500 ' + 
+      (pct >= 90 ? 'bg-rose-500' : pct >= 70 ? 'bg-amber-400' : 'bg-emerald-500');
+  }
+
+  // Update slots if provided
+  if (data.slots && Array.isArray(data.slots)) {
+    data.slots.forEach(slot => {
+      updateSlotCard(slot.id, slot.status === 'AVAILABLE');
+    });
+  }
+}
+
+// Update single slot on slot_update
+function applySlotUpdate(slotData) {
+  if (!slotData) return;
+  updateSlotCard(slotData.slot_id, slotData.is_available);
+}
+
+function updateSlotCard(slotId, isAvailable) {
+  const card = document.getElementById(`slot-card-${slotId}`);
+  if (!card) return;
+
+  if (isAvailable) {
+    card.className = 'slot-card p-3 rounded-xl border flex flex-col items-center justify-center text-center select-none bg-emerald-50/70 border-emerald-200 text-emerald-900';
+    const badge = card.querySelector('.slot-badge');
+    if (badge) {
+      badge.className = 'slot-badge text-xs font-semibold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800';
+      badge.textContent = '🟢 Free';
+    }
+  } else {
+    card.className = 'slot-card p-3 rounded-xl border flex flex-col items-center justify-center text-center select-none bg-rose-50/70 border-rose-200 text-rose-900';
+    const badge = card.querySelector('.slot-badge');
+    if (badge) {
+      badge.className = 'slot-badge text-xs font-semibold px-2 py-0.5 rounded-full bg-rose-100 text-rose-800';
+      badge.textContent = '🔴 Occupied';
+    }
+  }
+}
+
+// Simulation Handlers
+async function triggerSimulation(type) {
+  const parkingId = LOT.parking_id || LOT.id;
+  const endpoint = type === 'entry' ? `/api/parking/${parkingId}/simulate-entry/` : `/api/parking/${parkingId}/simulate-exit/`;
+  const feedback = document.getElementById('sim-feedback');
+
+  try {
+    const res = await fetch(endpoint, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': getCsrfToken(),
+      }
+    });
+    const result = await res.json();
+
+    if (feedback) {
+      feedback.classList.remove('hidden');
+      if (res.ok) {
+        feedback.className = 'mt-3 text-xs font-medium text-emerald-800 bg-emerald-50 border border-emerald-200 rounded-lg p-2.5';
+        feedback.innerHTML = `✅ <b>Success:</b> ${result.detail}`;
+      } else {
+        feedback.className = 'mt-3 text-xs font-medium text-rose-800 bg-rose-50 border border-rose-200 rounded-lg p-2.5';
+        feedback.innerHTML = `⚠️ <b>Error:</b> ${result.detail}`;
+      }
+    }
+  } catch (err) {
+    if (feedback) {
+      feedback.classList.remove('hidden');
+      feedback.className = 'mt-3 text-xs font-medium text-rose-800 bg-rose-50 border border-rose-200 rounded-lg p-2.5';
+      feedback.innerHTML = `⚠️ <b>Request failed:</b> ${err.message}`;
+    }
+  }
+}
+
+async function toggleSlot(slotId) {
+  const parkingId = LOT.parking_id || LOT.id;
+  try {
+    const res = await fetch(`/api/parking/${parkingId}/slots/${slotId}/toggle/`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': getCsrfToken(),
+      }
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      alert(data.detail || 'Failed to toggle slot.');
+    }
+  } catch (err) {
+    console.error('Error toggling slot:', err);
+  }
+}
+
+function getCsrfToken() {
+  const match = document.cookie.match(/csrftoken=([^;]+)/);
+  return match ? match[1] : '';
 }
 </script>
 {% endblock %}
+

@@ -37,6 +37,9 @@ ALLOWED_HOSTS = [
 
 # Application definition
 INSTALLED_APPS = [
+    # Daphne ASGI server (must be before django.contrib.staticfiles for runserver)
+    'daphne',
+
     # Core platform commands & health checks
     'apps.core',
 
@@ -53,6 +56,7 @@ INSTALLED_APPS = [
     'rest_framework_simplejwt',
     'rest_framework_simplejwt.token_blacklist',
     'corsheaders',
+    'channels',
 
     # Smart Parking Platform Apps
     'apps.accounts',        # User profiles, auth, driver preferences
@@ -60,6 +64,7 @@ INSTALLED_APPS = [
     'apps.reservations',    # Parking slot booking and hold lifecycle
     'apps.sessions',        # Active parking sessions & duration tracking (label: parking_sessions)
 ]
+
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
@@ -92,6 +97,16 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'config.wsgi.application'
 ASGI_APPLICATION = 'config.asgi.application'
+
+# ==============================================================================
+# Django Channels & WebSocket Configuration (Day 04)
+# ==============================================================================
+CHANNEL_LAYERS = {
+    'default': {
+        'BACKEND': 'channels.layers.InMemoryChannelLayer',
+    },
+}
+
 
 # ==============================================================================
 # Database Configuration - Oracle Database via python-oracledb

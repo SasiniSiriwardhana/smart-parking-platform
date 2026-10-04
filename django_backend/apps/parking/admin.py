@@ -6,12 +6,21 @@ Provides full CRUD, search, filtering and list display for ParkingLot objects.
 from django.contrib import admin
 from django.utils.translation import gettext_lazy as _
 
-from .models import ParkingLot
+from .models import ParkingLot, ParkingSlot, SlotStatus
+
+
+class ParkingSlotInline(admin.TabularInline):
+    """Inline view of slots on the ParkingLot admin page."""
+    model = ParkingSlot
+    extra = 0
+    fields = ('slot_number', 'status', 'created_at', 'updated_at')
+    readonly_fields = ('created_at', 'updated_at')
 
 
 @admin.register(ParkingLot)
 class ParkingLotAdmin(admin.ModelAdmin):
     """Admin interface for ParkingLot management."""
+    inlines = [ParkingSlotInline]
 
     # ── List display ─────────────────────────────────────────────────────────
     list_display = [
@@ -59,8 +68,7 @@ class ParkingLotAdmin(admin.ModelAdmin):
         (_('Capacity & Availability'), {
             'fields': ('total_slots', 'available_slots'),
             'description': _(
-                'Day 03: available_slots is a stored value. '
-                'Real-time sync is a Day 04+ feature.'
+                'Day 04: Real-time availability synchronized with individual parking slots.'
             ),
         }),
         (_('Pricing'), {
@@ -84,3 +92,26 @@ class ParkingLotAdmin(admin.ModelAdmin):
     @admin.display(description=_('Address'))
     def address_short(self, obj):
         return obj.address[:60] + '…' if len(obj.address) > 60 else obj.address
+
+
+@admin.register(ParkingSlot)
+class ParkingSlotAdmin(admin.ModelAdmin):
+    """Admin interface for individual parking slot management (Day 04)."""
+    list_display = [
+        'slot_number',
+        'parking_lot',
+        'status_badge',
+        'status',
+        'created_at',
+        'updated_at',
+    ]
+    list_filter = ['status', 'parking_lot']
+    search_fields = ['slot_number', 'parking_lot__name']
+    ordering = ['parking_lot', 'slot_number']
+    readonly_fields = ('created_at', 'updated_at')
+
+    @admin.display(description=_('Status Badge'))
+    def status_badge(self, obj):
+        return "🟢 Available" if obj.status == SlotStatus.AVAILABLE else "🔴 Occupied"
+
+

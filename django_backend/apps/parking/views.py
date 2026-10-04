@@ -23,8 +23,14 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.accounts.models import UserRole
-from .models import ParkingLot
-from .serializers import ParkingLotListSerializer, ParkingLotSerializer
+from .models import ParkingLot, ParkingSlot, SlotStatus
+from .serializers import (
+    ParkingLotListSerializer,
+    ParkingLotSerializer,
+    ParkingSlotSerializer,
+    ParkingAvailabilitySerializer,
+)
+from .services import broadcast_parking_availability, broadcast_slot_update
 from .utils import haversine_distance, format_distance
 
 
@@ -43,6 +49,11 @@ def is_parking_provider(user):
 
 def is_admin(user):
     return user.is_authenticated and (user.is_staff or user.is_superuser)
+
+
+def can_manage_lot(user, lot):
+    """Return True if user is the lot owner or a staff/admin user."""
+    return user.is_authenticated and (lot.owner_id == user.id or is_admin(user))
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -128,12 +139,14 @@ class ParkingListAPIView(APIView):
 class ParkingDetailAPIView(APIView):
     """
     GET /api/parking/<id>/
-    Returns JSON detail for a single parking lot.
+    Returns JSON detail for a single parking lot with slots.
     """
     permission_classes = [AllowAny]
 
     def get(self, request, pk):
         lot = get_object_or_404(ParkingLot, pk=pk)
+        if not lot.slots.exists():
+            lot.generate_default_slots()
 
         # Optionally calculate distance if user coords provided
         user_lat = request.GET.get('lat')
@@ -149,24 +162,165 @@ class ParkingDetailAPIView(APIView):
             except (ValueError, TypeError):
                 pass
 
-        serializer = ParkingLotListSerializer(
+        serializer = ParkingLotSerializer(
             lot,
             context={'distances': distances, 'request': request}
         )
         return Response(serializer.data)
 
 
+class ParkingAvailabilityAPIView(APIView):
+    """
+    GET /api/parking/<id>/availability/
+    Returns real-time availability counters and occupancy summary.
+    """
+    permission_classes = [AllowAny]
+
+    def get(self, request, pk):
+        lot = get_object_or_404(ParkingLot, pk=pk)
+        if not lot.slots.exists():
+            lot.generate_default_slots()
+        return Response(lot.get_realtime_status())
+
+
+class ParkingSlotsAPIView(APIView):
+    """
+    GET /api/parking/<id>/slots/
+    Returns individual parking slot statuses for the parking lot.
+    """
+    permission_classes = [AllowAny]
+
+    def get(self, request, pk):
+        lot = get_object_or_404(ParkingLot, pk=pk)
+        if not lot.slots.exists():
+            lot.generate_default_slots()
+        slots = lot.slots.all().order_by('slot_number')
+        serializer = ParkingSlotSerializer(slots, many=True)
+        return Response({
+            'parking_id': lot.pk,
+            'parking_name': lot.name,
+            'total_slots': lot.total_slots,
+            'available_slots': lot.available_slots,
+            'occupied_slots': lot.occupied_slots,
+            'slots': serializer.data,
+        })
+
+
+class SimulateCarEntryAPIView(APIView):
+    """
+    POST /api/parking/<id>/simulate-entry/
+    Simulates a car entering the parking lot.
+    Only authorized provider (owner) or admin can trigger.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, pk):
+        lot = get_object_or_404(ParkingLot, pk=pk)
+        if not can_manage_lot(request.user, lot):
+            return Response(
+                {'detail': 'You do not have permission to control simulation for this parking lot.'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        success, message, slot = lot.simulate_car_entry()
+        if not success:
+            return Response(
+                {
+                    'detail': message,
+                    'error': 'PARKING_FULL',
+                    'availability': lot.get_realtime_status(),
+                },
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Broadcast update over WebSockets
+        broadcast_parking_availability(lot)
+
+        return Response({
+            'detail': message,
+            'slot': ParkingSlotSerializer(slot).data if slot else None,
+            'availability': lot.get_realtime_status(),
+        }, status=status.HTTP_200_OK)
+
+
+class SimulateCarExitAPIView(APIView):
+    """
+    POST /api/parking/<id>/simulate-exit/
+    Simulates a car leaving the parking lot.
+    Optional body: {"slot_id": 123}
+    Only authorized provider (owner) or admin can trigger.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, pk):
+        lot = get_object_or_404(ParkingLot, pk=pk)
+        if not can_manage_lot(request.user, lot):
+            return Response(
+                {'detail': 'You do not have permission to control simulation for this parking lot.'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        slot_id = request.data.get('slot_id')
+        success, message, slot = lot.simulate_car_exit(slot_id=slot_id)
+        if not success:
+            return Response(
+                {
+                    'detail': message,
+                    'error': 'NO_OCCUPIED_SLOTS',
+                    'availability': lot.get_realtime_status(),
+                },
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Broadcast update over WebSockets
+        broadcast_parking_availability(lot)
+
+        return Response({
+            'detail': message,
+            'slot': ParkingSlotSerializer(slot).data if slot else None,
+            'availability': lot.get_realtime_status(),
+        }, status=status.HTTP_200_OK)
+
+
+class SlotToggleAPIView(APIView):
+    """
+    POST /api/parking/<id>/slots/<slot_id>/toggle/
+    Provider action to toggle an individual slot between AVAILABLE and OCCUPIED.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, pk, slot_pk):
+        lot = get_object_or_404(ParkingLot, pk=pk)
+        if not can_manage_lot(request.user, lot):
+            return Response(
+                {'detail': 'You do not have permission to control slots for this parking lot.'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        slot = get_object_or_404(ParkingSlot, pk=slot_pk, parking_lot=lot)
+        if slot.is_available:
+            slot.occupy()
+        else:
+            slot.vacate()
+
+        lot.sync_slot_counts()
+        broadcast_slot_update(slot)
+
+        return Response({
+            'detail': f'Slot {slot.slot_number} is now {slot.get_status_display()}.',
+            'slot': ParkingSlotSerializer(slot).data,
+            'availability': lot.get_realtime_status(),
+        }, status=status.HTTP_200_OK)
+
+
 class ParkingCreateAPIView(APIView):
     """
     POST /api/parking/create/
     Provider-only endpoint to create a new parking lot.
-    Unauthenticated users → 401.
-    Non-provider users   → 403.
     """
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
-        # Server-side role check — never trust frontend only
         if not is_parking_provider(request.user) and not is_admin(request.user):
             return Response(
                 {'detail': 'Only Parking Providers can create parking lots.'},
@@ -175,8 +329,10 @@ class ParkingCreateAPIView(APIView):
 
         serializer = ParkingLotSerializer(data=request.data)
         if serializer.is_valid():
-            serializer.save(owner=request.user)
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
+            lot = serializer.save(owner=request.user)
+            lot.generate_default_slots()
+            broadcast_parking_availability(lot)
+            return Response(ParkingLotSerializer(lot).data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
@@ -196,6 +352,7 @@ class ProviderParkingListAPIView(APIView):
         lots = ParkingLot.objects.filter(owner=request.user).order_by('-created_at')
         serializer = ParkingLotListSerializer(lots, many=True, context={'request': request})
         return Response(serializer.data)
+
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -237,12 +394,17 @@ class ParkingFinderView(TemplateView):
 class ParkingDetailView(View):
     """
     GET /parking/<pk>/
-    Customer-facing detail page for a single parking lot.
+    Customer & Provider detail page with real-time slot grid & simulation controls.
     """
     template_name = 'parking/parking_detail.html'
 
     def get(self, request, pk):
         lot = get_object_or_404(ParkingLot, pk=pk)
+        if not lot.slots.exists():
+            lot.generate_default_slots()
+
+        slots = lot.slots.all().order_by('slot_number')
+        can_simulate = can_manage_lot(request.user, lot)
 
         # Calculate distance if user provided coords
         user_lat = request.GET.get('lat')
@@ -258,17 +420,37 @@ class ParkingDetailView(View):
             except (ValueError, TypeError):
                 pass
 
+        slots_data = [
+            {
+                'id': s.pk,
+                'slot_number': s.slot_number,
+                'status': s.status,
+                'is_available': s.is_available,
+                'is_occupied': s.is_occupied,
+            }
+            for s in slots
+        ]
+
+        lot_data = lot.get_realtime_status()
+        lot_data.update({
+            'latitude': float(lot.latitude),
+            'longitude': float(lot.longitude),
+            'address': lot.address,
+            'price_per_hour': float(lot.price_per_hour),
+            'opening_time': lot.opening_time.strftime('%H:%M'),
+            'closing_time': lot.closing_time.strftime('%H:%M'),
+        })
+
         return render(request, self.template_name, {
             'lot': lot,
+            'slots': slots,
+            'can_simulate': can_simulate,
             'distance_str': distance_str,
             'page_title': lot.name,
-            'lot_json': json.dumps({
-                'id': lot.pk,
-                'name': lot.name,
-                'latitude': float(lot.latitude),
-                'longitude': float(lot.longitude),
-            }),
+            'lot_json': json.dumps(lot_data),
+            'slots_json': json.dumps(slots_data),
         })
+
 
 
 class ProviderParkingListView(LoginRequiredMixin, View):
@@ -441,11 +623,14 @@ class ParkingCreateView(LoginRequiredMixin, View):
                 closing_time=parsed_close,
             )
             lot.save()
+            lot.generate_default_slots()
+            broadcast_parking_availability(lot)
             messages.success(
                 request,
-                f'✅ Parking lot "{lot.name}" has been created successfully!'
+                f'✅ Parking lot "{lot.name}" has been created successfully with {lot.total_slots} slots!'
             )
             return redirect('parking:provider_list')
+
         except Exception as e:
             messages.error(request, f'Error creating parking lot: {e}')
             return render(request, self.template_name, {

@@ -357,15 +357,87 @@ POST /api/auth/register/
 
 ---
 
-## 17. Future 8-Day Development Roadmap
+---
 
-| Day | Title | Key Objectives |
-|---|---|---|
-| **Day 1 (Completed)** | **Project Setup** | Django, DRF, Oracle DB, Tailwind, Spring Boot & Maven foundation. |
-| **Day 2 (Completed)** | **Authentication & UI** | UserProfile, JWT auth, registration/login/logout, protected routes, role dashboards, 40 tests. |
-| **Day 3** | **Parking Locations & Map** | Parking garages and surface lots data model, geospatial coordinates, Leaflet/Mapbox map integration. |
-| **Day 4** | **Parking Availability** | Real-time spot availability tracker, capacity thresholds, occupancy state transitions. |
-| **Day 5** | **ML Availability Prediction** | Occupancy forecasting model (time-series / gradient boosting) and batch prediction pipeline. |
-| **Day 6** | **Smart Recommendation & Reservation** | Spring Boot scoring algorithm (distance, rate, occupancy, walking time), slot booking, and reservation holds. |
-| **Day 7** | **Parking Session, AI & Alerts** | Active parking session timers, fee calculator, automated notifications, conversational parking assistant. |
-| **Day 8** | **Dashboard, Testing & Deployment**| Driver & operator analytics dashboards, end-to-end tests, Dockerization, and production deployment guide. |
+## 18. Day 04 — Real-Time Parking Availability
+
+Day 04 introduces **real-time parking slot availability** powered by **Django Channels** and **WebSockets**, allowing users to observe live occupancy changes instantly without refreshing their web browser.
+
+### Implemented Features:
+
+* **Individual Parking Slots:** `ParkingSlot` model linked to `ParkingLot` with designated slot identifiers (e.g. `A01`, `A02`, `B05`).
+* **Available / Occupied Slot States:** `SlotStatus` choices (`AVAILABLE` 🟢 / `OCCUPIED` 🔴) with model helper methods (`occupy()`, `vacate()`, `is_available`, `is_occupied`).
+* **Dynamic Occupancy & Availability Calculation:** Real-time counters ensuring `Total Slots = Occupied Slots + Available Slots` consistency at all times.
+* **Django Channels & ASGI Architecture:** Full ASGI configuration routing both standard HTTP/REST requests and WebSocket streams.
+* **WebSocket Availability Feed:**
+  * Route: `ws://127.0.0.1:8000/ws/parking/<parking_id>/availability/`
+  * Global Stream: `ws://127.0.0.1:8000/ws/parking/availability/`
+* **Real-Time Broadcasting Service:** Instant dispatch of occupancy totals and slot statuses to connected channel groups when slot states change.
+* **Simulated Car Entry & Exit Operations:** Backend simulation engine with edge-case validation (`Parking is full.` / `No occupied slots available.`).
+* **Interactive Parking Slot Grid:** Responsive slot layout on the parking detail page displaying live color-coded cards and badges.
+* **Provider Simulation Controls:** Dedicated test controls on the parking detail and provider management pages for verified owners/administrators.
+* **Real-Time Parking Finder Sync:** Live card counters and map popups update dynamically across all active client browsers.
+* **Automated Test Suite:** 18 dedicated Day 04 automated tests covering ORM models, status transitions, simulation constraints, REST APIs, authorization, and WebSocket communicators (87 total passing tests).
+
+### Real-Time Availability API Reference
+
+| Method | Endpoint | Auth Required | Description |
+|--------|----------|---------------|-------------|
+| `GET` | `/api/parking/<id>/availability/` | No | Get real-time availability and occupancy statistics |
+| `GET` | `/api/parking/<id>/slots/` | No | Get list of individual parking slots and current states |
+| `POST` | `/api/parking/<id>/simulate-entry/` | Provider/Admin | Simulate vehicle arrival (occupies first available slot) |
+| `POST` | `/api/parking/<id>/simulate-exit/` | Provider/Admin | Simulate vehicle departure (vacates an occupied slot) |
+| `POST` | `/api/parking/<id>/slots/<slot_id>/toggle/` | Provider/Admin | Toggle individual slot between Available and Occupied |
+
+### WebSocket Protocol Example
+
+**Connect:**
+```
+ws://127.0.0.1:8000/ws/parking/1/availability/
+```
+
+**Initial Snapshot Payload:**
+```json
+{
+  "type": "availability_snapshot",
+  "data": {
+    "parking_id": 1,
+    "name": "Central Plaza Parking",
+    "total_slots": 100,
+    "occupied_slots": 73,
+    "available_slots": 27,
+    "occupancy_percentage": 73.0,
+    "is_full": false,
+    "is_available": true,
+    "is_open_now": true,
+    "slots": [
+      {"id": 1, "slot_number": "A01", "status": "OCCUPIED", "is_available": false},
+      {"id": 2, "slot_number": "A02", "status": "AVAILABLE", "is_available": true}
+    ]
+  }
+}
+```
+
+### Current Implementation & Sensor Simulation
+
+The platform currently utilizes a **backend simulation mechanism** (`Simulate Car Entry` / `Simulate Car Exit`) because physical IoT parking sensors are not yet deployed in the test environment.
+
+### Future Enhancement
+
+In future stages, physical IoT-based ultrasonic/magnetic parking sensors or camera-based license plate recognition (ANPR) systems can connect to the platform's REST endpoints or ingestion pipelines to deliver hardware-measured occupancy streams in real time.
+
+---
+
+## 19. 8-Day Development Roadmap
+
+| Day | Title | Status | Key Objectives |
+|---|---|---|---|
+| **Day 1** | **Project Setup** | ✅ Completed | Django, DRF, Oracle DB, Tailwind, Spring Boot & Maven foundation. |
+| **Day 2** | **Authentication & UI** | ✅ Completed | UserProfile, JWT auth, registration/login/logout, protected routes, role dashboards, 40 tests. |
+| **Day 3** | **Parking Locations & Map** | ✅ Completed | Parking garages & surface lots model, geospatial coordinates, Leaflet map, distance filters. |
+| **Day 4** | **Real-Time Parking Availability** | ✅ Completed | ParkingSlot model, Django Channels, WebSockets, simulated car entry/exit, live slot grid, 87 total tests. |
+| **Day 5** | **ML Availability Prediction** | ⏳ Planned | Occupancy forecasting model (time-series / gradient boosting) and batch prediction pipeline. |
+| **Day 6** | **Smart Recommendation & Reservation** | ⏳ Planned | Spring Boot scoring algorithm (distance, rate, occupancy, walking time), slot booking, and reservation holds. |
+| **Day 7** | **Parking Session, AI & Alerts** | ⏳ Planned | Active parking session timers, fee calculator, automated notifications, conversational parking assistant. |
+| **Day 8** | **Dashboard, Testing & Deployment**| ⏳ Planned | Driver & operator analytics dashboards, end-to-end tests, Dockerization, and production deployment guide. |
+
