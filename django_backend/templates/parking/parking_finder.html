@@ -44,8 +44,14 @@
   <!-- ── Page Header ─────────────────────────────────────────────────────── -->
   <div class="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
     <div>
-      <h1 class="font-heading text-3xl font-bold text-slate-900">Find Parking</h1>
-      <p class="mt-1 text-sm text-slate-500">Browse parking lots, filter by distance, price or availability.</p>
+      <div class="flex items-center gap-3">
+        <h1 class="font-heading text-3xl font-bold text-slate-900">Find Parking</h1>
+        <div id="finder-ws-badge" class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+          <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+          <span id="finder-ws-text">Live Synced</span>
+        </div>
+      </div>
+      <p class="mt-1 text-sm text-slate-500">Browse parking lots, filter by distance, price or real-time availability.</p>
     </div>
     {% if user.is_authenticated and user.profile.is_parking_provider %}
       <a href="{% url 'parking:create' %}" id="add-parking-btn"
@@ -57,6 +63,7 @@
       </a>
     {% endif %}
   </div>
+
 
   <!-- ── Search Bar ──────────────────────────────────────────────────────── -->
   <div class="mb-4 relative">
@@ -494,10 +501,73 @@ document.getElementById('reset-filters-btn').addEventListener('click', function(
   applyFilters();
 });
 
+// ── Real-Time WebSocket Feed (Day 04) ─────────────────────────────────────
+let finderSocket = null;
+
+function initFinderWebSocket() {
+  const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+  const wsUrl = `${protocol}//${window.location.host}/ws/parking/availability/`;
+  const badge = document.getElementById('finder-ws-badge');
+  const badgeText = document.getElementById('finder-ws-text');
+
+  finderSocket = new WebSocket(wsUrl);
+
+  finderSocket.onopen = function() {
+    if (badge) {
+      badge.className = 'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200';
+      badgeText.textContent = 'Live Synced';
+    }
+  };
+
+  finderSocket.onmessage = function(event) {
+    try {
+      const msg = JSON.parse(event.data);
+      if (msg.type === 'availability_update' && msg.data) {
+        const update = msg.data;
+        const target = ALL_LOTS.find(l => l.id === update.parking_id);
+        if (target) {
+          target.available_slots = update.available_slots;
+          target.total_slots = update.total_slots;
+          target.occupied_slots = update.occupied_slots;
+          target.occupancy_percentage = update.occupancy_percentage;
+          applyFilters();
+        }
+      } else if (msg.type === 'all_availability_snapshot' && Array.isArray(msg.data)) {
+        msg.data.forEach(update => {
+          const target = ALL_LOTS.find(l => l.id === update.parking_id);
+          if (target) {
+            target.available_slots = update.available_slots;
+            target.total_slots = update.total_slots;
+          }
+        });
+        applyFilters();
+      }
+    } catch (err) {
+      console.error('Error in finder WebSocket message:', err);
+    }
+  };
+
+  finderSocket.onerror = function() {
+    if (badge) {
+      badge.className = 'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-slate-100 text-slate-600 border border-slate-200';
+      badgeText.textContent = 'Offline (Cached)';
+    }
+  };
+
+  finderSocket.onclose = function() {
+    if (badge) {
+      badge.className = 'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-slate-100 text-slate-600 border border-slate-200';
+      badgeText.textContent = 'Offline (Cached)';
+    }
+    setTimeout(initFinderWebSocket, 5000);
+  };
+}
+
 // ── Init ──────────────────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', function() {
   initMap();
   renderAll();
+  initFinderWebSocket();
   if (ALL_LOTS.length === 0) {
     document.getElementById('empty-message').textContent = 'No parking locations found.';
     document.getElementById('empty-state').classList.remove('hidden');
@@ -506,3 +576,4 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 </script>
 {% endblock %}
+
