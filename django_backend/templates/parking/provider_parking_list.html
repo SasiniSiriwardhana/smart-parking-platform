@@ -75,12 +75,13 @@
               <th class="px-5 py-3.5 text-center text-xs font-semibold text-slate-500 uppercase tracking-wider">Rate/hr</th>
               <th class="px-5 py-3.5 text-center text-xs font-semibold text-slate-500 uppercase tracking-wider">Hours</th>
               <th class="px-5 py-3.5 text-center text-xs font-semibold text-slate-500 uppercase tracking-wider">Status</th>
+              <th class="px-5 py-3.5 text-center text-xs font-semibold text-slate-500 uppercase tracking-wider">Simulation</th>
               <th class="px-5 py-3.5 text-center text-xs font-semibold text-slate-500 uppercase tracking-wider">Actions</th>
             </tr>
           </thead>
           <tbody class="divide-y divide-slate-100">
             {% for lot in lots %}
-            <tr class="hover:bg-slate-50 transition-colors">
+            <tr id="row-lot-{{ lot.id }}" class="hover:bg-slate-50 transition-colors">
               <td class="px-5 py-4">
                 <p class="font-semibold text-slate-900 text-sm">{{ lot.name }}</p>
               </td>
@@ -88,18 +89,12 @@
                 <p class="text-sm text-slate-600 max-w-xs truncate">{{ lot.address }}</p>
               </td>
               <td class="px-5 py-4 text-center">
-                <span class="text-sm font-medium text-slate-700">{{ lot.total_slots }}</span>
+                <span id="lot-total-{{ lot.id }}" class="text-sm font-medium text-slate-700">{{ lot.total_slots }}</span>
               </td>
               <td class="px-5 py-4 text-center">
-                {% with avail=lot.available_slots total=lot.total_slots %}
-                  {% if avail == 0 %}
-                    <span class="bg-red-100 text-red-700 text-xs font-semibold px-2 py-0.5 rounded-full">{{ avail }} / {{ total }}</span>
-                  {% elif avail|floatformat:"0" < "10" %}
-                    <span class="bg-amber-100 text-amber-700 text-xs font-semibold px-2 py-0.5 rounded-full">{{ avail }} / {{ total }}</span>
-                  {% else %}
-                    <span class="bg-emerald-100 text-emerald-700 text-xs font-semibold px-2 py-0.5 rounded-full">{{ avail }} / {{ total }}</span>
-                  {% endif %}
-                {% endwith %}
+                <span id="lot-avail-badge-{{ lot.id }}" class="{% if lot.available_slots == 0 %}bg-red-100 text-red-700{% elif lot.available_slots < 10 %}bg-amber-100 text-amber-700{% else %}bg-emerald-100 text-emerald-700{% endif %} text-xs font-semibold px-2 py-0.5 rounded-full">
+                  <span id="lot-avail-{{ lot.id }}">{{ lot.available_slots }}</span> / {{ lot.total_slots }}
+                </span>
               </td>
               <td class="px-5 py-4 text-center">
                 <span class="text-sm font-medium text-slate-700">Rs.{{ lot.price_per_hour }}</span>
@@ -113,6 +108,21 @@
                 {% else %}
                   <span class="bg-slate-100 text-slate-500 text-xs font-semibold px-2 py-0.5 rounded-full">Closed</span>
                 {% endif %}
+              </td>
+              <!-- Simulation Quick Controls -->
+              <td class="px-5 py-4 text-center">
+                <div class="inline-flex items-center gap-1.5">
+                  <button onclick="providerSimulate({{ lot.id }}, 'entry')"
+                          title="Simulate vehicle arrival"
+                          class="px-2.5 py-1 text-xs font-semibold bg-emerald-50 text-emerald-700 hover:bg-emerald-100 rounded-lg border border-emerald-200 transition-colors">
+                    🚗 Entry
+                  </button>
+                  <button onclick="providerSimulate({{ lot.id }}, 'exit')"
+                          title="Simulate vehicle departure"
+                          class="px-2.5 py-1 text-xs font-semibold bg-rose-50 text-rose-700 hover:bg-rose-100 rounded-lg border border-rose-200 transition-colors">
+                    💨 Exit
+                  </button>
+                </div>
               </td>
               <td class="px-5 py-4 text-center">
                 <a href="{% url 'parking:detail' lot.pk %}"
@@ -150,4 +160,73 @@
   {% endif %}
 
 </div>
+
+{% block extra_js %}
+<script>
+// Real-time Provider WebSocket Sync
+let providerSocket = null;
+
+function initProviderWebSocket() {
+  const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+  const wsUrl = `${protocol}//${window.location.host}/ws/parking/availability/`;
+
+  providerSocket = new WebSocket(wsUrl);
+
+  providerSocket.onmessage = function(event) {
+    try {
+      const msg = JSON.parse(event.data);
+      if (msg.type === 'availability_update' && msg.data) {
+        updateProviderRow(msg.data);
+      }
+    } catch (err) {
+      console.error('WebSocket parse error:', err);
+    }
+  };
+
+  providerSocket.onclose = function() {
+    setTimeout(initProviderWebSocket, 4000);
+  };
+}
+
+function updateProviderRow(data) {
+  const availEl = document.getElementById(`lot-avail-${data.parking_id}`);
+  const badgeEl = document.getElementById(`lot-avail-badge-${data.parking_id}`);
+  if (availEl) {
+    availEl.textContent = data.available_slots;
+  }
+  if (badgeEl) {
+    badgeEl.className = (data.available_slots === 0 ? 'bg-red-100 text-red-700' :
+                         data.available_slots < 10 ? 'bg-amber-100 text-amber-700' :
+                         'bg-emerald-100 text-emerald-700') + ' text-xs font-semibold px-2 py-0.5 rounded-full';
+  }
+}
+
+async function providerSimulate(lotId, type) {
+  const endpoint = type === 'entry' ? `/api/parking/${lotId}/simulate-entry/` : `/api/parking/${lotId}/simulate-exit/`;
+  try {
+    const res = await fetch(endpoint, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': getCsrfToken(),
+      }
+    });
+    const result = await res.json();
+    if (!res.ok) {
+      alert(`Simulation Notice: ${result.detail}`);
+    }
+  } catch (err) {
+    console.error('Simulation error:', err);
+  }
+}
+
+function getCsrfToken() {
+  const match = document.cookie.match(/csrftoken=([^;]+)/);
+  return match ? match[1] : '';
+}
+
+document.addEventListener('DOMContentLoaded', initProviderWebSocket);
+</script>
 {% endblock %}
+{% endblock %}
+
