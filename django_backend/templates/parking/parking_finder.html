@@ -357,6 +357,9 @@ function renderCards(lots) {
         <span class="text-xs text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full font-medium">
           Rs. ${parseFloat(lot.price_per_hour).toFixed(0)}/hr
         </span>
+        <span class="text-xs text-indigo-700 bg-indigo-50 border border-indigo-200/60 px-2 py-0.5 rounded-full font-medium">
+          🔮 20m Forecast
+        </span>
         ${openBadge}
       </div>
 
@@ -372,7 +375,7 @@ function renderCards(lots) {
         <a href="/parking/${lot.id}/"
            onclick="event.stopPropagation()"
            class="flex-1 py-1.5 px-3 text-xs font-medium bg-slate-900 text-white rounded-lg hover:bg-slate-700 transition-colors text-center">
-          Details →
+          Details & Forecast →
         </a>
       </div>
     </div>`;
