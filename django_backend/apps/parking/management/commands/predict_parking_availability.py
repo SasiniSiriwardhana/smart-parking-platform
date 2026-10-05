@@ -73,7 +73,7 @@ class Command(BaseCommand):
 
         available_slots = max(0, total_slots - occupied_slots)
 
-        self.stdout.write(self.style.NOTICE(f"\n🔮 Computing 20-minute availability forecast for: {lot_name}"))
+        self.stdout.write(self.style.NOTICE(f"\n[PREDICTION] Computing 20-minute availability forecast for: {lot_name}"))
         
         result = predict_availability(
             parking_lot_name=lot_name,
@@ -94,7 +94,7 @@ class Command(BaseCommand):
         self.stdout.write(f"Current Available: {result['current_available']}")
         self.stdout.write(f"Target Time: {result['target_time']} ({result['target_day']})")
         self.stdout.write(f"Predicted in {result['prediction_minutes']} minutes: {result['predicted_available']}")
-        self.stdout.write(f"Estimated Range: {r_min}–{r_max} spaces")
+        self.stdout.write(f"Estimated Range: {r_min}-{r_max} spaces")
         self.stdout.write(f"Confidence: {result['confidence']}")
         self.stdout.write(f"Status: {result['status']}")
         self.stdout.write(f"Warning: {result['warning_message']}")

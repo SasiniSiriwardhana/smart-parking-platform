@@ -35,7 +35,7 @@ class Command(BaseCommand):
             )
             self.stdout.write(self.style.SUCCESS("\n" + format_metrics_report(metrics)))
             self.stdout.write(
-                self.style.SUCCESS("✓ Successfully trained and serialized ML model artifact.")
+                self.style.SUCCESS("[SUCCESS] Successfully trained and serialized ML model artifact.")
             )
         except Exception as e:
             self.stderr.write(self.style.ERROR(f"Model training failed: {str(e)}"))
