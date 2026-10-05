@@ -63,8 +63,7 @@ class Command(BaseCommand):
                 lot = ParkingLot.objects.get(pk=parking_id)
                 lot_name = lot.name
                 total_slots = lot.total_slots
-                # Derive live occupancy from slots
-                occupied_slots = lot.slots.filter(is_occupied=True).count()
+                occupied_slots = lot.occupied_slots
                 if total_slots == 0 and lot.slots.count() > 0:
                     total_slots = lot.slots.count()
             except ParkingLot.DoesNotExist:

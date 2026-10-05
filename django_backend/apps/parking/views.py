@@ -208,7 +208,7 @@ class ParkingPredictionAPIView(APIView):
             lot.generate_default_slots()
 
         total_slots = lot.total_slots if lot.total_slots > 0 else (lot.slots.count() or 1)
-        occupied_slots = lot.slots.filter(is_occupied=True).count()
+        occupied_slots = lot.slots.filter(status=SlotStatus.OCCUPIED).count() if lot.slots.exists() else lot.occupied_slots
         available_slots = max(0, total_slots - occupied_slots)
 
         # Parse query params or post body
