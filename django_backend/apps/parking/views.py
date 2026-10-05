@@ -29,9 +29,11 @@ from .serializers import (
     ParkingLotSerializer,
     ParkingSlotSerializer,
     ParkingAvailabilitySerializer,
+    ParkingPredictionSerializer,
 )
 from .services import broadcast_parking_availability, broadcast_slot_update
 from .utils import haversine_distance, format_distance
+from ml.src.predict import predict_availability
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -181,6 +183,72 @@ class ParkingAvailabilityAPIView(APIView):
         if not lot.slots.exists():
             lot.generate_default_slots()
         return Response(lot.get_realtime_status())
+
+
+class ParkingPredictionAPIView(APIView):
+    """
+    GET /api/parking/<id>/prediction/
+    POST /api/parking/<id>/prediction/
+    Calculates ML-based availability prediction (~20 minutes ahead)
+    using trained RandomForestRegressor, current occupancy, time, and contextual factors.
+    """
+    permission_classes = [AllowAny]
+
+    def get(self, request, pk):
+        return self._handle_prediction(request, pk)
+
+    def post(self, request, pk):
+        return self._handle_prediction(request, pk)
+
+    def _handle_prediction(self, request, pk):
+        lot = get_object_or_404(ParkingLot, pk=pk)
+        
+        # Ensure slots exist and calculate real-time current counts
+        if not lot.slots.exists():
+            lot.generate_default_slots()
+
+        total_slots = lot.total_slots if lot.total_slots > 0 else (lot.slots.count() or 1)
+        occupied_slots = lot.slots.filter(status=SlotStatus.OCCUPIED).count() if lot.slots.exists() else lot.occupied_slots
+        available_slots = max(0, total_slots - occupied_slots)
+
+        # Parse query params or post body
+        data = request.data if request.method == 'POST' else request.query_params
+        
+        # Check for event / holiday / duration overrides if provided
+        has_event = str(data.get('has_event', data.get('event', ''))).lower() in ['1', 'true', 'yes']
+        is_holiday = str(data.get('is_holiday', data.get('holiday', ''))).lower() in ['1', 'true', 'yes']
+        
+        try:
+            avg_duration = float(data.get('avg_duration', 60.0))
+        except (ValueError, TypeError):
+            avg_duration = 60.0
+
+        try:
+            prediction_result = predict_availability(
+                parking_lot_name=lot.name,
+                total_slots=total_slots,
+                current_occupied=occupied_slots,
+                current_available=available_slots,
+                average_parking_duration=avg_duration,
+                nearby_event=has_event,
+                holiday=is_holiday,
+            )
+            prediction_result['parking_id'] = lot.pk
+            serializer = ParkingPredictionSerializer(prediction_result)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response(
+                {
+                    'error': 'PREDICTION_FAILED',
+                    'detail': f'Unable to generate availability prediction: {str(e)}',
+                    'parking_id': lot.pk,
+                    'parking_name': lot.name,
+                    'current_available': available_slots,
+                    'total_slots': total_slots,
+                },
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
 
 
 class ParkingSlotsAPIView(APIView):
