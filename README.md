@@ -428,7 +428,93 @@ In future stages, physical IoT-based ultrasonic/magnetic parking sensors or came
 
 ---
 
-## 19. 8-Day Development Roadmap
+## 20. Day 05 — Machine Learning Availability Prediction (Portfolio Feature)
+
+Day 05 introduces the platform's main intelligent predictive capability: **ML-based Parking Availability Prediction**. The system analyzes historical occupancy patterns, time-of-day dynamics, day-of-week trends, turnover rates, and environmental factors (events, holidays) to forecast available spaces in **approximately 20 minutes**.
+
+### 🌟 End-to-End Prediction Flow
+```
+Real-Time Parking State (Live DB / WebSockets)
+                      ↓
+  Contextual Features (Time, Day, Event, Holiday)
+                      ↓
+  Pretrained RandomForestRegressor Pipeline
+                      ↓
+  Future Forecast & Uncertainty Interval (~20 min)
+                      ↓
+  Explainable Confidence & Capacity Warning Alerts
+                      ↓
+  Real-Time Dynamic UI (Parking Details Card)
+```
+
+### 📊 Dataset Schema & Synthetic Status
+> **Important Note:** The current training dataset is **synthetic historical parking data for development and model training**. In production environments, this dataset can be substituted with recorded IoT sensor telemetry or ticketing histories.
+
+- **Dataset Size:** 4,800 historical records across diverse facility archetypes (commercial, transit, retail, office, mixed).
+- **Required Columns:**
+  - `Date`, `Day`, `Time`, `Parking Lot`, `Total Slots`, `Occupied Slots`, `Available Slots`, `Average Parking Duration`, `Nearby Event`, `Holiday`, `Future Available Slots`
+- **Data Integrity Constraints:**
+  - $0 \le \text{Occupied Slots} \le \text{Total Slots}$
+  - $\text{Available Slots} = \text{Total Slots} - \text{Occupied Slots}$
+  - $0 \le \text{Future Available Slots} \le \text{Total Slots}$
+
+### 🧠 Model Architecture & Hyperparameters
+- **Model:** `RandomForestRegressor`
+- **Preprocessing:** Scikit-learn `ColumnTransformer` with `OneHotEncoder` (categorical `Parking Lot`, `Day`) and `StandardScaler` (numerical occupancy metrics, cyclical $\sin/\cos$ time encodings, binary flags).
+- **Hyperparameters:**
+  ```python
+  {
+      "n_estimators": 100,
+      "max_depth": 15,
+      "min_samples_split": 5,
+      "min_samples_leaf": 2,
+      "random_state": 42,
+      "n_jobs": -1
+  }
+  ```
+- **Serialization:** Persisted as `ml/models/parking_availability_model.joblib` using `joblib` and cached in-memory for zero disk I/O inference.
+
+### 📈 Actual Model Evaluation Metrics
+Evaluated on a held-out 20% test partition (960 validation samples):
+- **Mean Absolute Error (MAE):** **2.86 spaces**
+- **Root Mean Squared Error (RMSE):** **3.88 spaces**
+- **$R^2$ Score:** **0.9902**
+- **Max Observed Error:** **26.33 spaces**
+
+### 🔮 Prediction Interval, Confidence & Warnings
+- **Prediction Horizon:** Target timestamp = $\text{Current Time} + 20\text{ minutes}$.
+- **Uncertainty Range:** Computed via model validation error:
+  $$\text{margin} = \max(1, \text{round}(\text{RMSE} \times 0.75))$$
+  $$\text{Range} = [\max(0, \text{Pred} - \text{margin}),\, \min(\text{Total}, \text{Pred} + \text{margin})]$$
+- **Explainable Confidence Score:**
+  - $\text{RMSE} / \text{Total Capacity} \le 6\% \implies$ **High**
+  - $\text{RMSE} / \text{Total Capacity} \le 12\% \implies$ **Medium**
+  - $\text{RMSE} / \text{Total Capacity} > 12\% \implies$ **Low**
+- **Capacity Warning Rules:**
+  - $\le 10\%$ predicted available $\implies$ 🔴 *Parking is likely to become full soon.*
+  - $\le 25\%$ predicted available $\implies$ 🟡 *Parking availability may become limited.*
+  - $> 25\%$ predicted available $\implies$ 🟢 *Parking availability is expected to remain available.*
+
+### 🚀 Management Commands & Usage
+```bash
+# 1. Train and serialize ML model:
+python manage.py train_parking_model
+
+# 2. Predict availability for a parking lot by ID:
+python manage.py predict_parking_availability --parking-id 1
+
+# 3. Predict availability interactively / standalone:
+python manage.py predict_parking_availability --name "Parking A" --total-slots 100 --occupied-slots 92
+```
+
+### 📡 API Reference
+| Method | Endpoint | Description |
+|---|---|---|
+| `GET` / `POST` | `/api/parking/<id>/prediction/` | Generates 20-minute availability forecast with confidence, range, warning level, and explainability factors. |
+
+---
+
+## 21. 8-Day Development Roadmap
 
 | Day | Title | Status | Key Objectives |
 |---|---|---|---|
@@ -436,8 +522,9 @@ In future stages, physical IoT-based ultrasonic/magnetic parking sensors or came
 | **Day 2** | **Authentication & UI** | ✅ Completed | UserProfile, JWT auth, registration/login/logout, protected routes, role dashboards, 40 tests. |
 | **Day 3** | **Parking Locations & Map** | ✅ Completed | Parking garages & surface lots model, geospatial coordinates, Leaflet map, distance filters. |
 | **Day 4** | **Real-Time Parking Availability** | ✅ Completed | ParkingSlot model, Django Channels, WebSockets, simulated car entry/exit, live slot grid, 87 total tests. |
-| **Day 5** | **ML Availability Prediction** | ⏳ Planned | Occupancy forecasting model (time-series / gradient boosting) and batch prediction pipeline. |
+| **Day 5** | **ML Availability Prediction** | ✅ Completed | RandomForestRegressor, 20-min forecasting, uncertainty range, confidence, capacity warnings, API & UI. |
 | **Day 6** | **Smart Recommendation & Reservation** | ⏳ Planned | Spring Boot scoring algorithm (distance, rate, occupancy, walking time), slot booking, and reservation holds. |
 | **Day 7** | **Parking Session, AI & Alerts** | ⏳ Planned | Active parking session timers, fee calculator, automated notifications, conversational parking assistant. |
 | **Day 8** | **Dashboard, Testing & Deployment**| ⏳ Planned | Driver & operator analytics dashboards, end-to-end tests, Dockerization, and production deployment guide. |
+
 
