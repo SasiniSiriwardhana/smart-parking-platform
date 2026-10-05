@@ -28,5 +28,8 @@ urlpatterns = [
     path('api/parking/<int:pk>/simulate-entry/', views.SimulateCarEntryAPIView.as_view(), name='api_simulate_entry'),
     path('api/parking/<int:pk>/simulate-exit/', views.SimulateCarExitAPIView.as_view(), name='api_simulate_exit'),
     path('api/parking/<int:pk>/slots/<int:slot_pk>/toggle/', views.SlotToggleAPIView.as_view(), name='api_slot_toggle'),
+
+    # ── Day 05 ML Availability Prediction API endpoint ───────────────────────
+    path('api/parking/<int:pk>/prediction/', views.ParkingPredictionAPIView.as_view(), name='api_prediction'),
 ]
 

@@ -206,3 +206,41 @@ class ParkingLotListSerializer(serializers.ModelSerializer):
             return round(dist, 2)
         return None
 
+
+class PredictionRangeSerializer(serializers.Serializer):
+    """Serializer for uncertainty interval minimum and maximum bounds."""
+    min = serializers.IntegerField()
+    max = serializers.IntegerField()
+
+
+class ModelMetricsSummarySerializer(serializers.Serializer):
+    """Serializer for model evaluation summary metrics."""
+    mae = serializers.FloatField()
+    rmse = serializers.FloatField()
+    r2_score = serializers.FloatField()
+
+
+class ParkingPredictionSerializer(serializers.Serializer):
+    """
+    Serializer for ML-based 20-minute availability forecast response (Day 05).
+    """
+    parking_id = serializers.IntegerField()
+    parking_name = serializers.CharField()
+    total_slots = serializers.IntegerField()
+    current_available = serializers.IntegerField()
+    current_occupied = serializers.IntegerField()
+    occupancy_rate = serializers.FloatField()
+    prediction_minutes = serializers.IntegerField()
+    target_time = serializers.CharField()
+    target_day = serializers.CharField()
+    predicted_available = serializers.IntegerField()
+    predicted_occupied = serializers.IntegerField()
+    predicted_range = PredictionRangeSerializer()
+    confidence = serializers.CharField()
+    status = serializers.CharField()
+    warning_level = serializers.CharField()
+    warning_message = serializers.CharField()
+    factors = serializers.ListField(child=serializers.CharField())
+    model_metrics = ModelMetricsSummarySerializer(required=False)
+
+
