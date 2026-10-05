@@ -113,6 +113,108 @@
         {% endif %}
       </div>
 
+      <!-- ── Day 05 ML Predicted Availability Card ──────────────────────── -->
+      <div id="ml-prediction-card" class="bg-gradient-to-br from-indigo-900 via-slate-900 to-sky-950 text-white rounded-2xl border border-indigo-700/50 p-6 shadow-lg relative overflow-hidden">
+        <!-- Background Ambient Glow -->
+        <div class="absolute -right-10 -bottom-10 w-40 h-40 bg-indigo-500/20 rounded-full blur-2xl pointer-events-none"></div>
+
+        <div class="flex items-center justify-between gap-3 mb-4 pb-3 border-b border-indigo-700/40">
+          <div class="flex items-center gap-2.5">
+            <div class="w-8 h-8 rounded-lg bg-indigo-500/20 border border-indigo-400/30 flex items-center justify-center text-lg">
+              🔮
+            </div>
+            <div>
+              <h2 class="text-base font-bold text-white leading-tight">Predicted Availability</h2>
+              <p class="text-[11px] text-indigo-200/70">ML forecast for next ~20 minutes</p>
+            </div>
+          </div>
+
+          <button id="btn-refresh-prediction" onclick="fetchPrediction(true)" title="Recalculate prediction"
+                  class="p-1.5 rounded-lg bg-indigo-800/50 hover:bg-indigo-700/60 border border-indigo-500/30 text-indigo-200 hover:text-white transition-all">
+            <svg id="pred-refresh-icon" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+            </svg>
+          </button>
+        </div>
+
+        <!-- Prediction Loading State -->
+        <div id="pred-loading-state" class="py-6 text-center">
+          <div class="inline-block animate-spin w-7 h-7 border-3 border-indigo-400 border-t-transparent rounded-full mb-2"></div>
+          <p class="text-xs text-indigo-200 font-medium">Analyzing historical trends and computing ML forecast...</p>
+        </div>
+
+        <!-- Prediction Error State -->
+        <div id="pred-error-state" class="hidden py-4 text-center bg-rose-950/40 border border-rose-800/50 rounded-xl p-3">
+          <p class="text-xs text-rose-300 font-medium mb-2" id="pred-error-msg">Unable to generate availability prediction.</p>
+          <button onclick="fetchPrediction()" class="text-xs px-3 py-1 bg-rose-800 hover:bg-rose-700 text-white rounded-lg transition-colors">
+            Retry Forecast
+          </button>
+        </div>
+
+        <!-- Prediction Content View -->
+        <div id="pred-content" class="hidden flex flex-col gap-4">
+
+          <!-- Current vs Forecast Comparison -->
+          <div class="grid grid-cols-2 gap-2.5">
+            <!-- Current State -->
+            <div class="bg-indigo-950/60 border border-indigo-800/40 rounded-xl p-3">
+              <p class="text-[10px] uppercase tracking-wider font-semibold text-indigo-300/80">Now</p>
+              <p class="text-2xl font-black text-white mt-0.5"><span id="pred-now-spaces">-</span> <span class="text-xs font-normal text-indigo-200">spaces</span></p>
+              <p class="text-[11px] text-emerald-400 font-medium mt-1 flex items-center gap-1">
+                <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span> Current Available
+              </p>
+            </div>
+
+            <!-- In 20 Min Prediction -->
+            <div class="bg-indigo-950/60 border border-indigo-800/40 rounded-xl p-3">
+              <div class="flex items-center justify-between">
+                <p class="text-[10px] uppercase tracking-wider font-semibold text-indigo-300/80">In 20 Min</p>
+                <span id="pred-target-time-label" class="text-[10px] font-mono text-indigo-300/70">--:--</span>
+              </div>
+              <p class="text-2xl font-black text-white mt-0.5"><span id="pred-future-range">-</span> <span class="text-xs font-normal text-indigo-200">spaces</span></p>
+              <p class="text-[11px] text-sky-300 font-medium mt-1 flex items-center gap-1">
+                <span>🔮</span> Expected: <b id="pred-future-spaces" class="text-white">-</b>
+              </p>
+            </div>
+          </div>
+
+          <!-- Confidence Meter Badge -->
+          <div class="flex items-center justify-between bg-indigo-950/40 border border-indigo-800/30 rounded-xl px-3.5 py-2">
+            <span class="text-xs text-indigo-200/90 font-medium">Confidence Level</span>
+            <div class="flex items-center gap-1.5">
+              <span id="pred-confidence-badge" class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                High
+              </span>
+            </div>
+          </div>
+
+          <!-- Dynamic Status Warning Alert -->
+          <div id="pred-warning-banner" class="rounded-xl p-3 border flex items-start gap-2.5 transition-all">
+            <span id="pred-warning-icon" class="text-base flex-shrink-0">🔴</span>
+            <p id="pred-warning-text" class="text-xs font-semibold leading-snug">
+              Parking is likely to become full soon.
+            </p>
+          </div>
+
+          <!-- Prediction Factors -->
+          <div class="bg-indigo-950/40 border border-indigo-800/30 rounded-xl p-3">
+            <p class="text-[11px] font-bold text-indigo-200 uppercase tracking-wider mb-2">Prediction Factors</p>
+            <ul id="pred-factors-list" class="space-y-1 text-xs text-indigo-100/80">
+              <li class="flex items-center gap-1.5">• High current occupancy</li>
+              <li class="flex items-center gap-1.5">• Day & time trend</li>
+            </ul>
+          </div>
+
+          <!-- Model Metadata Tag -->
+          <div class="flex items-center justify-between text-[10px] text-indigo-300/60 pt-1">
+            <span>Model: RandomForestRegressor</span>
+            <span id="pred-model-metrics-tag">R²: 0.99 • MAE: 2.9</span>
+          </div>
+
+        </div>
+      </div>
+
       <!-- Provider / Dev Simulation Controls -->
       {% if can_simulate %}
       <div class="bg-gradient-to-br from-indigo-50 to-sky-50 rounded-2xl border border-indigo-100 p-6 shadow-sm">
@@ -230,7 +332,125 @@ document.addEventListener('DOMContentLoaded', function() {
 
   // Connect WebSocket
   initWebSocket();
+
+  // Load initial ML availability forecast
+  fetchPrediction();
 });
+
+// ML Availability Prediction Manager (Day 05)
+let predictionDebounceTimer = null;
+
+async function fetchPrediction(isManual = false) {
+  const parkingId = LOT.parking_id || LOT.id;
+  const loadingEl = document.getElementById('pred-loading-state');
+  const errorEl = document.getElementById('pred-error-state');
+  const contentEl = document.getElementById('pred-content');
+  const refreshIcon = document.getElementById('pred-refresh-icon');
+
+  if (isManual && refreshIcon) {
+    refreshIcon.classList.add('animate-spin');
+  }
+
+  // If initial load or content hidden, show loader
+  if (!contentEl || contentEl.classList.contains('hidden')) {
+    if (loadingEl) loadingEl.classList.remove('hidden');
+    if (errorEl) errorEl.classList.add('hidden');
+  }
+
+  try {
+    const res = await fetch(`/api/parking/${parkingId}/prediction/`);
+    if (!res.ok) {
+      throw new Error(`Server returned HTTP ${res.status}`);
+    }
+    const data = await res.json();
+    renderPrediction(data);
+  } catch (err) {
+    console.error('Failed to load availability prediction:', err);
+    if (!contentEl || contentEl.classList.contains('hidden')) {
+      if (loadingEl) loadingEl.classList.add('hidden');
+      if (errorEl) {
+        errorEl.classList.remove('hidden');
+        const msgEl = document.getElementById('pred-error-msg');
+        if (msgEl) msgEl.textContent = `Unable to generate prediction: ${err.message}`;
+      }
+    }
+  } finally {
+    if (refreshIcon) {
+      setTimeout(() => refreshIcon.classList.remove('animate-spin'), 600);
+    }
+  }
+}
+
+function renderPrediction(data) {
+  const loadingEl = document.getElementById('pred-loading-state');
+  const errorEl = document.getElementById('pred-error-state');
+  const contentEl = document.getElementById('pred-content');
+
+  if (loadingEl) loadingEl.classList.add('hidden');
+  if (errorEl) errorEl.classList.add('hidden');
+  if (contentEl) contentEl.classList.remove('hidden');
+
+  // Fill in spaces & timing
+  const nowSpaces = document.getElementById('pred-now-spaces');
+  const futureRange = document.getElementById('pred-future-range');
+  const futureSpaces = document.getElementById('pred-future-spaces');
+  const targetTimeLabel = document.getElementById('pred-target-time-label');
+
+  if (nowSpaces) nowSpaces.textContent = data.current_available;
+  if (futureSpaces) futureSpaces.textContent = `${data.predicted_available} spaces`;
+  if (futureRange && data.predicted_range) {
+    futureRange.textContent = `${data.predicted_range.min}–${data.predicted_range.max}`;
+  }
+  if (targetTimeLabel && data.target_time) {
+    targetTimeLabel.textContent = data.target_time;
+  }
+
+  // Confidence badge
+  const confBadge = document.getElementById('pred-confidence-badge');
+  if (confBadge) {
+    confBadge.textContent = data.confidence;
+    if (data.confidence === 'High') {
+      confBadge.className = 'px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30';
+    } else if (data.confidence === 'Medium') {
+      confBadge.className = 'px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30';
+    } else {
+      confBadge.className = 'px-2.5 py-0.5 rounded-full text-xs font-bold bg-rose-500/20 text-rose-300 border border-rose-500/30';
+    }
+  }
+
+  // Status Warning Banner
+  const warnBanner = document.getElementById('pred-warning-banner');
+  const warnIcon = document.getElementById('pred-warning-icon');
+  const warnText = document.getElementById('pred-warning-text');
+
+  if (warnBanner && warnIcon && warnText) {
+    warnText.textContent = data.warning_message;
+    if (data.warning_level === 'red') {
+      warnBanner.className = 'rounded-xl p-3 border flex items-start gap-2.5 transition-all bg-rose-950/60 border-rose-700/60 text-rose-200';
+      warnIcon.textContent = '🔴';
+    } else if (data.warning_level === 'yellow') {
+      warnBanner.className = 'rounded-xl p-3 border flex items-start gap-2.5 transition-all bg-amber-950/60 border-amber-700/60 text-amber-200';
+      warnIcon.textContent = '🟡';
+    } else {
+      warnBanner.className = 'rounded-xl p-3 border flex items-start gap-2.5 transition-all bg-emerald-950/60 border-emerald-700/60 text-emerald-200';
+      warnIcon.textContent = '🟢';
+    }
+  }
+
+  // Factors List
+  const factorsList = document.getElementById('pred-factors-list');
+  if (factorsList && Array.isArray(data.factors)) {
+    factorsList.innerHTML = data.factors
+      .map(f => `<li class="flex items-center gap-1.5"><span class="text-indigo-400">•</span> ${f}</li>`)
+      .join('');
+  }
+
+  // Model metrics
+  const metricsTag = document.getElementById('pred-model-metrics-tag');
+  if (metricsTag && data.model_metrics) {
+    metricsTag.textContent = `R²: ${data.model_metrics.r2_score} • MAE: ${data.model_metrics.mae} spaces`;
+  }
+}
 
 // WebSocket Connection Manager
 function initWebSocket() {
@@ -324,6 +544,12 @@ function applyAvailabilityUpdate(data) {
       updateSlotCard(slot.id, slot.status === 'AVAILABLE');
     });
   }
+
+  // Debounce prediction refresh when real-time availability changes
+  clearTimeout(predictionDebounceTimer);
+  predictionDebounceTimer = setTimeout(() => {
+    fetchPrediction();
+  }, 400);
 }
 
 // Update single slot on slot_update
@@ -379,6 +605,9 @@ async function triggerSimulation(type) {
         feedback.innerHTML = `⚠️ <b>Error:</b> ${result.detail}`;
       }
     }
+
+    // Refresh forecast after simulation
+    fetchPrediction();
   } catch (err) {
     if (feedback) {
       feedback.classList.remove('hidden');
@@ -401,6 +630,8 @@ async function toggleSlot(slotId) {
     const data = await res.json();
     if (!res.ok) {
       alert(data.detail || 'Failed to toggle slot.');
+    } else {
+      fetchPrediction();
     }
   } catch (err) {
     console.error('Error toggling slot:', err);
