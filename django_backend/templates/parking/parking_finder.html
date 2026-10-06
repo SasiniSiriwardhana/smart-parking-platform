@@ -133,6 +133,67 @@
 
     <!-- Parking List -->
     <div class="lg:w-2/5 xl:w-1/3 flex flex-col gap-4">
+
+      <!-- ⭐ Recommended Parking Section (Day 06) -->
+      <div id="recommended-parking-section" class="hidden">
+        <div class="relative overflow-hidden rounded-2xl bg-gradient-to-br from-indigo-900 via-sky-900 to-slate-900 p-5 text-white shadow-xl border border-sky-400/30">
+          <div class="absolute -right-8 -top-8 w-28 h-28 bg-sky-500/20 rounded-full blur-2xl pointer-events-none"></div>
+          
+          <div class="flex items-center justify-between gap-2 mb-3">
+            <div class="flex items-center gap-2">
+              <span class="text-amber-400 text-lg">⭐</span>
+              <span class="font-heading text-xs font-bold uppercase tracking-wider text-sky-200">Recommended Parking</span>
+            </div>
+            <div id="rec-score-badge" class="px-2.5 py-1 rounded-full text-xs font-extrabold bg-gradient-to-r from-amber-400 to-amber-500 text-slate-950 shadow-md">
+              Score: --
+            </div>
+          </div>
+
+          <h2 id="rec-lot-name" class="font-heading text-xl font-bold text-white leading-tight">Loading recommendation...</h2>
+          <p id="rec-lot-address" class="text-xs text-sky-200/80 mt-1 mb-4"></p>
+
+          <!-- Key Metrics -->
+          <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-4">
+            <div class="bg-white/10 backdrop-blur-md rounded-xl p-2.5 border border-white/10 text-center">
+              <p class="text-[10px] text-sky-200 uppercase font-semibold">Distance</p>
+              <p id="rec-dist" class="text-sm font-bold text-white mt-0.5">--</p>
+            </div>
+            <div class="bg-white/10 backdrop-blur-md rounded-xl p-2.5 border border-white/10 text-center">
+              <p class="text-[10px] text-sky-200 uppercase font-semibold">Price</p>
+              <p id="rec-price" class="text-sm font-bold text-emerald-300 mt-0.5">--</p>
+            </div>
+            <div class="bg-white/10 backdrop-blur-md rounded-xl p-2.5 border border-white/10 text-center">
+              <p class="text-[10px] text-sky-200 uppercase font-semibold">Available</p>
+              <p id="rec-avail" class="text-sm font-bold text-sky-300 mt-0.5">--</p>
+            </div>
+            <div class="bg-white/10 backdrop-blur-md rounded-xl p-2.5 border border-white/10 text-center">
+              <p class="text-[10px] text-sky-200 uppercase font-semibold">Predicted</p>
+              <p id="rec-pred" class="text-sm font-bold text-amber-300 mt-0.5">--</p>
+            </div>
+          </div>
+
+          <!-- Why this parking? reasons list -->
+          <div class="mb-4 bg-slate-950/40 rounded-xl p-3 border border-white/5">
+            <p class="text-xs font-semibold text-sky-300 mb-2 flex items-center gap-1.5">
+              <span>Why this parking?</span>
+            </p>
+            <ul id="rec-reasons-list" class="space-y-1 text-xs text-slate-200"></ul>
+          </div>
+
+          <!-- Actions -->
+          <div class="flex items-center gap-2">
+            <a id="rec-view-btn" href="#"
+               class="flex-1 py-2 px-3 text-center text-xs font-semibold bg-white/10 hover:bg-white/20 text-white rounded-xl transition-colors border border-white/20">
+              View Facility
+            </a>
+            <button id="rec-reserve-btn" type="button"
+                    class="flex-1 py-2 px-3 text-center text-xs font-bold bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-500 hover:to-amber-600 text-slate-950 rounded-xl transition-all shadow-md">
+              Reserve Slot
+            </button>
+          </div>
+        </div>
+      </div>
+
       <div class="flex items-center justify-between">
         <span id="results-count" class="text-sm font-medium text-slate-600"></span>
         <button id="reset-filters-btn" class="text-xs text-sky-600 hover:text-sky-700 font-medium hidden">Reset filters</button>
@@ -145,6 +206,7 @@
         <div class="skeleton" id="skeleton-2"></div>
         <div class="skeleton" id="skeleton-3"></div>
       </div>
+
 
       <!-- Empty state -->
       <div id="empty-state" class="hidden text-center py-12 bg-white rounded-xl border border-slate-200">
@@ -470,7 +532,74 @@ function showLocationStatus(msg, color = 'sky') {
   el.classList.remove('hidden');
 }
 
-// ── Event listeners ───────────────────────────────────────────────────────
+// ── Recommendation Engine Integration (Day 06) ───────────────────────────
+let currentRecommendations = null;
+
+async function fetchRecommendations() {
+  const recSection = document.getElementById('recommended-parking-section');
+  if (!recSection) return;
+
+  const distMax = document.getElementById('filter-distance')?.value || '';
+  const priceFilter = document.getElementById('filter-price')?.value || '';
+  let maxPrice = '';
+  if (priceFilter) {
+    const parts = priceFilter.split('-');
+    if (parts.length === 2 && parts[1] !== '9999') maxPrice = parts[1];
+  }
+  const availMin = document.getElementById('filter-availability')?.value || '';
+
+  const params = new URLSearchParams();
+  if (userLat !== null && userLon !== null) {
+    params.set('lat', userLat);
+    params.set('lon', userLon);
+  }
+  if (distMax) params.set('distance', distMax);
+  if (maxPrice) params.set('max_price', maxPrice);
+  if (availMin) params.set('min_slots', availMin);
+
+  try {
+    const res = await fetch(`/api/parking/recommendations/?${params.toString()}`);
+    if (!res.ok) return;
+    const data = await res.json();
+    currentRecommendations = data;
+
+    if (data && data.recommended_parking) {
+      renderRecommendedCard(data.recommended_parking);
+      recSection.classList.remove('hidden');
+    } else {
+      recSection.classList.add('hidden');
+    }
+  } catch (err) {
+    console.warn('Unable to load smart recommendations:', err);
+  }
+}
+
+function renderRecommendedCard(rec) {
+  document.getElementById('rec-score-badge').textContent = `Score: ${rec.score.toFixed(1)} / 100`;
+  document.getElementById('rec-lot-name').textContent = rec.name;
+  document.getElementById('rec-lot-address').textContent = rec.address;
+  document.getElementById('rec-dist').textContent = rec.distance_text || `${rec.distance_meters} m`;
+  document.getElementById('rec-price').textContent = `Rs. ${rec.price_per_hour.toFixed(0)}/hr`;
+  document.getElementById('rec-avail').textContent = `${rec.available_slots}/${rec.total_slots}`;
+  document.getElementById('rec-pred').textContent = `${rec.predicted_min}–${rec.predicted_max}`;
+  document.getElementById('rec-view-btn').href = `/parking/${rec.id}/`;
+  
+  const resBtn = document.getElementById('rec-reserve-btn');
+  if (resBtn) {
+    resBtn.onclick = () => openReservationModal(rec.id, rec.name, rec.price_per_hour, rec.available_slots);
+  }
+
+  const reasonsList = document.getElementById('rec-reasons-list');
+  if (reasonsList) {
+    reasonsList.innerHTML = (rec.reasons || []).map(r => `
+      <li class="flex items-center gap-2">
+        <span class="text-emerald-400 font-bold">✓</span>
+        <span>${r}</span>
+      </li>
+    `).join('');
+  }
+}
+
 document.getElementById('locate-btn').addEventListener('click', function() {
   if (!navigator.geolocation) {
     showLocationStatus('Geolocation is not supported by your browser.', 'red');
