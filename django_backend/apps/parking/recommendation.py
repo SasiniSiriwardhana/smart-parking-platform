@@ -147,4 +147,21 @@ class RecommendationScoringService:
         score = 100.0 * (1.0 - (price / max_price))
         return round(max(0.0, min(100.0, score)), 2)
 
+    @staticmethod
+    def normalize_availability_score(
+        available_slots: int,
+        total_slots: int
+    ) -> float:
+        """
+        Normalize current availability score on a 0–100 scale (more spaces = higher score).
+        - 100% available -> 100.0
+        - 0 spaces available -> 0.0
+        """
+        if total_slots <= 0:
+            return 0.0
+        avail = max(0, min(total_slots, int(available_slots)))
+        score = (avail / float(total_slots)) * 100.0
+        return round(max(0.0, min(100.0, score)), 2)
+
+
 
