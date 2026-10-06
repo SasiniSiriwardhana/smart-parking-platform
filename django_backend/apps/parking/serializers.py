@@ -244,3 +244,66 @@ class ParkingPredictionSerializer(serializers.Serializer):
     model_metrics = ModelMetricsSummarySerializer(required=False)
 
 
+class FactorScoresSerializer(serializers.Serializer):
+    """Normalized individual factor scores (0–100)."""
+    current_availability = serializers.FloatField()
+    predicted_availability = serializers.FloatField()
+    distance = serializers.FloatField()
+    price = serializers.FloatField()
+    walking_distance = serializers.FloatField()
+
+
+class WeightsUsedSerializer(serializers.Serializer):
+    """Configured weight factors for recommendation algorithm."""
+    current_availability = serializers.FloatField()
+    predicted_availability = serializers.FloatField()
+    distance = serializers.FloatField()
+    price = serializers.FloatField()
+    walking_distance = serializers.FloatField()
+
+
+class ParkingRecommendationItemSerializer(serializers.Serializer):
+    """
+    Serializer for a single ranked recommendation candidate.
+    """
+    id = serializers.IntegerField()
+    name = serializers.CharField()
+    address = serializers.CharField()
+    latitude = serializers.FloatField()
+    longitude = serializers.FloatField()
+    score = serializers.FloatField()
+    price_per_hour = serializers.FloatField()
+    total_slots = serializers.IntegerField()
+    available_slots = serializers.IntegerField()
+    occupied_slots = serializers.IntegerField()
+    distance_km = serializers.FloatField()
+    distance_meters = serializers.IntegerField()
+    distance_text = serializers.CharField()
+    walking_distance_meters = serializers.IntegerField()
+    predicted_available = serializers.IntegerField()
+    predicted_min = serializers.IntegerField()
+    predicted_max = serializers.IntegerField()
+    predicted_range = PredictionRangeSerializer()
+    prediction_confidence = serializers.CharField()
+    prediction_status = serializers.CharField()
+    warning_level = serializers.CharField()
+    warning_message = serializers.CharField(allow_blank=True)
+    is_open_now = serializers.BooleanField()
+    opening_time = serializers.CharField()
+    closing_time = serializers.CharField()
+    reasons = serializers.ListField(child=serializers.CharField())
+    factor_scores = FactorScoresSerializer(required=False)
+    weights = WeightsUsedSerializer(required=False)
+
+
+class ParkingRecommendationResponseSerializer(serializers.Serializer):
+    """
+    Top-level response payload for GET /api/parking/recommendations/
+    """
+    recommended_parking = ParkingRecommendationItemSerializer(allow_null=True)
+    recommendations = ParkingRecommendationItemSerializer(many=True)
+    weights_used = WeightsUsedSerializer()
+    total_evaluated = serializers.IntegerField()
+
+
+
