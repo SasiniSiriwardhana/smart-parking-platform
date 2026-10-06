@@ -131,3 +131,20 @@ class RecommendationScoringService:
         score = 100.0 * (1.0 - (walk_m / max_walking_meters))
         return round(max(0.0, min(100.0, score)), 2)
 
+    @staticmethod
+    def normalize_price_score(
+        price_per_hour: float,
+        max_price: float = DEFAULT_MAX_PRICE_PER_HOUR
+    ) -> float:
+        """
+        Normalize hourly price score on a 0–100 scale (lower price = higher score).
+        - Rs. 0.0 -> 100.0
+        - >= max_price -> 0.0
+        """
+        if max_price <= 0:
+            return 100.0
+        price = max(0.0, float(price_per_hour))
+        score = 100.0 * (1.0 - (price / max_price))
+        return round(max(0.0, min(100.0, score)), 2)
+
+
