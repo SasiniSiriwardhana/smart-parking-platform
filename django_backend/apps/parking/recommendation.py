@@ -179,7 +179,58 @@ class RecommendationScoringService:
         score = (pred_avail / float(total_slots)) * 100.0
         return round(max(0.0, min(100.0, score)), 2)
 
+    @staticmethod
+    def get_ml_prediction(
+        parking_lot_name: str,
+        total_slots: int,
+        current_occupied: int,
+        current_available: int,
+        target_datetime=None,
+        avg_duration: float = 60.0,
+        has_event: bool = False,
+        is_holiday: bool = False,
+    ) -> Dict[str, Any]:
+        """
+        Invoke the existing Day 05 ML availability prediction service.
+        Reuses the trained RandomForest model without duplicate pipelines.
+        """
+        try:
+            from ml.src.predict import predict_availability
+            return predict_availability(
+                parking_lot_name=parking_lot_name,
+                total_slots=total_slots,
+                current_occupied=current_occupied,
+                current_available=current_available,
+                target_datetime=target_datetime,
+                average_parking_duration=avg_duration,
+                nearby_event=has_event,
+                holiday=is_holiday,
+            )
+        except Exception as e:
+            logger.warning(
+                f"ML Prediction fallback for {parking_lot_name}: {e}"
+            )
+            # Fallback estimation based on current state
+            return {
+                "parking_name": parking_lot_name,
+                "total_slots": total_slots,
+                "current_available": current_available,
+                "current_occupied": current_occupied,
+                "predicted_available": current_available,
+                "predicted_occupied": current_occupied,
+                "predicted_range": {
+                    "min": max(0, current_available - 2),
+                    "max": min(total_slots, current_available + 2)
+                },
+                "confidence": "Medium",
+                "status": "normal",
+                "warning_level": "green" if current_available > 0.25 * total_slots else "yellow",
+                "warning_message": "Availability based on current telemetry.",
+                "factors": [],
+            }
+
     def evaluate_candidate(
+
         self,
         lot,
         user_lat: Optional[float] = None,
@@ -423,7 +474,12 @@ class RecommendationScoringService:
             if min_slots is not None and lot.available_slots < int(min_slots):
                 continue
 
+            # Apply optional max_price filter
+            if max_price is not None and float(lot.price_per_hour) > float(max_price):
+                continue
+
             evaluated = self.evaluate_candidate(
+
                 lot=lot,
                 user_lat=user_lat,
                 user_lon=user_lon,
