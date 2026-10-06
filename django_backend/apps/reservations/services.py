@@ -90,3 +90,36 @@ def validate_reservation_times(
                 )
 
     return start_datetime, end_datetime, end_time
+
+
+def find_available_slot(
+    parking_lot: ParkingLot,
+    start_datetime: datetime,
+    end_datetime: datetime,
+    preferred_slot_id: Optional[int] = None,
+) -> Optional[ParkingSlot]:
+    """
+    Find an unreserved parking slot at the target parking lot for the specified time interval.
+    If preferred_slot_id is passed and free, assigns it; otherwise returns the first available slot.
+    """
+    if not parking_lot.slots.exists():
+        parking_lot.generate_default_slots()
+
+    # Query all active reservations overlapping the target interval for this parking lot
+    overlapping_res = Reservation.objects.filter(
+        parking_lot=parking_lot,
+        status__in=[ReservationStatus.CONFIRMED, ReservationStatus.PENDING],
+        start_datetime__lt=end_datetime,
+        end_datetime__gt=start_datetime,
+    ).values_list('parking_slot_id', flat=True)
+
+    # Exclude reserved slots
+    candidate_slots = parking_lot.slots.exclude(id__in=overlapping_res).order_by('slot_number')
+
+    if preferred_slot_id:
+        preferred = candidate_slots.filter(id=preferred_slot_id).first()
+        if preferred:
+            return preferred
+
+    return candidate_slots.first()
+
