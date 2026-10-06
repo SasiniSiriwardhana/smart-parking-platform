@@ -133,6 +133,67 @@
 
     <!-- Parking List -->
     <div class="lg:w-2/5 xl:w-1/3 flex flex-col gap-4">
+
+      <!-- ⭐ Recommended Parking Section (Day 06) -->
+      <div id="recommended-parking-section" class="hidden">
+        <div class="relative overflow-hidden rounded-2xl bg-gradient-to-br from-indigo-900 via-sky-900 to-slate-900 p-5 text-white shadow-xl border border-sky-400/30">
+          <div class="absolute -right-8 -top-8 w-28 h-28 bg-sky-500/20 rounded-full blur-2xl pointer-events-none"></div>
+          
+          <div class="flex items-center justify-between gap-2 mb-3">
+            <div class="flex items-center gap-2">
+              <span class="text-amber-400 text-lg">⭐</span>
+              <span class="font-heading text-xs font-bold uppercase tracking-wider text-sky-200">Recommended Parking</span>
+            </div>
+            <div id="rec-score-badge" class="px-2.5 py-1 rounded-full text-xs font-extrabold bg-gradient-to-r from-amber-400 to-amber-500 text-slate-950 shadow-md">
+              Score: --
+            </div>
+          </div>
+
+          <h2 id="rec-lot-name" class="font-heading text-xl font-bold text-white leading-tight">Loading recommendation...</h2>
+          <p id="rec-lot-address" class="text-xs text-sky-200/80 mt-1 mb-4"></p>
+
+          <!-- Key Metrics -->
+          <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-4">
+            <div class="bg-white/10 backdrop-blur-md rounded-xl p-2.5 border border-white/10 text-center">
+              <p class="text-[10px] text-sky-200 uppercase font-semibold">Distance</p>
+              <p id="rec-dist" class="text-sm font-bold text-white mt-0.5">--</p>
+            </div>
+            <div class="bg-white/10 backdrop-blur-md rounded-xl p-2.5 border border-white/10 text-center">
+              <p class="text-[10px] text-sky-200 uppercase font-semibold">Price</p>
+              <p id="rec-price" class="text-sm font-bold text-emerald-300 mt-0.5">--</p>
+            </div>
+            <div class="bg-white/10 backdrop-blur-md rounded-xl p-2.5 border border-white/10 text-center">
+              <p class="text-[10px] text-sky-200 uppercase font-semibold">Available</p>
+              <p id="rec-avail" class="text-sm font-bold text-sky-300 mt-0.5">--</p>
+            </div>
+            <div class="bg-white/10 backdrop-blur-md rounded-xl p-2.5 border border-white/10 text-center">
+              <p class="text-[10px] text-sky-200 uppercase font-semibold">Predicted</p>
+              <p id="rec-pred" class="text-sm font-bold text-amber-300 mt-0.5">--</p>
+            </div>
+          </div>
+
+          <!-- Why this parking? reasons list -->
+          <div class="mb-4 bg-slate-950/40 rounded-xl p-3 border border-white/5">
+            <p class="text-xs font-semibold text-sky-300 mb-2 flex items-center gap-1.5">
+              <span>Why this parking?</span>
+            </p>
+            <ul id="rec-reasons-list" class="space-y-1 text-xs text-slate-200"></ul>
+          </div>
+
+          <!-- Actions -->
+          <div class="flex items-center gap-2">
+            <a id="rec-view-btn" href="#"
+               class="flex-1 py-2 px-3 text-center text-xs font-semibold bg-white/10 hover:bg-white/20 text-white rounded-xl transition-colors border border-white/20">
+              View Facility
+            </a>
+            <button id="rec-reserve-btn" type="button"
+                    class="flex-1 py-2 px-3 text-center text-xs font-bold bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-500 hover:to-amber-600 text-slate-950 rounded-xl transition-all shadow-md">
+              Reserve Slot
+            </button>
+          </div>
+        </div>
+      </div>
+
       <div class="flex items-center justify-between">
         <span id="results-count" class="text-sm font-medium text-slate-600"></span>
         <button id="reset-filters-btn" class="text-xs text-sky-600 hover:text-sky-700 font-medium hidden">Reset filters</button>
@@ -146,6 +207,7 @@
         <div class="skeleton" id="skeleton-3"></div>
       </div>
 
+
       <!-- Empty state -->
       <div id="empty-state" class="hidden text-center py-12 bg-white rounded-xl border border-slate-200">
         <svg class="w-12 h-12 mx-auto text-slate-300 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -156,16 +218,163 @@
       </div>
     </div>
 
-    <!-- Map -->
-    <div class="lg:flex-1">
-      <div class="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
-        <div id="parking-map"></div>
+  <!-- ── Reservation Modal (Day 06) ──────────────────────────────────────── -->
+  <div id="reservation-modal" class="fixed inset-0 z-50 hidden overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+    <!-- Backdrop -->
+    <div class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity" onclick="closeReservationModal()"></div>
+
+    <div class="flex min-h-full items-center justify-center p-4 text-center sm:p-0">
+      <div class="relative transform overflow-hidden rounded-2xl bg-white text-left shadow-2xl transition-all sm:my-8 sm:w-full sm:max-w-lg border border-slate-100">
+        
+        <!-- Modal Header -->
+        <div class="bg-gradient-to-r from-sky-600 to-indigo-600 px-6 py-4 text-white flex items-center justify-between">
+          <div class="flex items-center gap-2.5">
+            <span class="text-xl">🅿️</span>
+            <div>
+              <h3 class="font-heading text-lg font-bold leading-tight" id="modal-title">Reserve Parking Slot</h3>
+              <p id="modal-lot-name" class="text-xs text-sky-100 font-medium">Select a facility to proceed</p>
+            </div>
+          </div>
+          <button type="button" onclick="closeReservationModal()" class="rounded-lg p-1 text-sky-200 hover:bg-white/10 hover:text-white transition-colors">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+            </svg>
+          </button>
+        </div>
+
+        <!-- Form View -->
+        <div id="modal-form-view" class="p-6">
+          
+          <!-- Authentication warning if not logged in -->
+          {% if not user.is_authenticated %}
+            <div class="mb-5 p-3.5 bg-amber-50 rounded-xl border border-amber-200 text-amber-900 text-xs font-medium flex items-start gap-2.5">
+              <span class="text-base leading-none">⚠️</span>
+              <div>
+                <p class="font-semibold">Sign in required</p>
+                <p class="mt-0.5 text-amber-800">You must be logged in to reserve a slot.</p>
+                <a href="{% url 'accounts:login' %}?next={{ request.path }}" class="mt-2 inline-block font-bold text-sky-700 underline hover:text-sky-800">Sign in to your account →</a>
+              </div>
+            </div>
+          {% endif %}
+
+          <!-- Error Alert Banner -->
+          <div id="modal-error-box" class="hidden mb-4 p-3.5 bg-rose-50 border border-rose-200 rounded-xl text-xs text-rose-800 font-medium flex items-start gap-2">
+            <span class="text-rose-500 font-bold">⚠️</span>
+            <span id="modal-error-text">An error occurred.</span>
+          </div>
+
+          <form id="reservation-booking-form" onsubmit="handleReservationSubmit(event)">
+            <input type="hidden" id="modal-lot-id" name="parking_lot" value="" />
+
+            <!-- Date & Time Grid -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+              <div>
+                <label class="block text-xs font-semibold text-slate-700 mb-1">Reservation Date</label>
+                <input type="date" id="res-date" name="reservation_date" required
+                       class="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500" />
+              </div>
+              <div>
+                <label class="block text-xs font-semibold text-slate-700 mb-1">Start Time</label>
+                <input type="time" id="res-time" name="start_time" required
+                       class="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500" />
+              </div>
+            </div>
+
+            <!-- Duration Selector -->
+            <div class="mb-4">
+              <label class="block text-xs font-semibold text-slate-700 mb-1">Duration (Hours)</label>
+              <select id="res-duration" name="duration" onchange="updateEstimatedCost()"
+                      class="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500 bg-white">
+                <option value="1">1 Hour</option>
+                <option value="2" selected>2 Hours</option>
+                <option value="3">3 Hours</option>
+                <option value="4">4 Hours</option>
+                <option value="5">5 Hours</option>
+                <option value="6">6 Hours</option>
+                <option value="8">8 Hours</option>
+                <option value="12">12 Hours</option>
+                <option value="24">24 Hours (Full Day)</option>
+              </select>
+            </div>
+
+            <!-- Price Breakdown Summary -->
+            <div class="mb-5 p-3.5 bg-slate-50 rounded-xl border border-slate-100 flex items-center justify-between">
+              <div>
+                <p class="text-xs text-slate-500">Rate Breakdown</p>
+                <p id="modal-rate-text" class="text-xs font-semibold text-slate-700 mt-0.5">Rs. 100/hr × 2 hrs</p>
+              </div>
+              <div class="text-right">
+                <p class="text-xs text-slate-500">Estimated Total</p>
+                <p id="modal-total-price" class="text-lg font-heading font-bold text-sky-700">Rs. 200</p>
+              </div>
+            </div>
+
+            <!-- Submit Button -->
+            <button type="submit" id="modal-submit-btn"
+                    {% if not user.is_authenticated %}disabled{% endif %}
+                    class="w-full py-3 px-4 rounded-xl bg-gradient-to-r from-sky-600 to-indigo-600 hover:from-sky-700 hover:to-indigo-700 disabled:opacity-50 text-white text-sm font-bold shadow-md transition-all flex items-center justify-center gap-2">
+              <span id="modal-btn-label">Confirm & Reserve Slot</span>
+              <svg id="modal-spinner" class="hidden w-4 h-4 animate-spin text-white" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
+              </svg>
+            </button>
+          </form>
+        </div>
+
+        <!-- Success Confirmation View -->
+        <div id="modal-success-view" class="hidden p-6 text-center">
+          <div class="w-16 h-16 mx-auto rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center mb-3">
+            <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/>
+            </svg>
+          </div>
+          <h4 class="font-heading text-xl font-bold text-slate-900">Reservation Confirmed!</h4>
+          <p id="confirm-lot-name" class="text-xs text-slate-500 mt-0.5 mb-4">Parking Facility</p>
+
+          <!-- Confirmed Details Card -->
+          <div class="bg-gradient-to-r from-sky-50 to-indigo-50 border border-sky-100 rounded-2xl p-4 text-left mb-5 space-y-2">
+            <div class="flex items-center justify-between pb-2 border-b border-sky-200/50">
+              <span class="text-xs text-slate-500 font-medium">Assigned Slot</span>
+              <span id="confirm-slot-number" class="font-mono text-base font-extrabold text-sky-900">A-24</span>
+            </div>
+            <div class="flex items-center justify-between text-xs text-slate-600">
+              <span>Date</span>
+              <span id="confirm-date" class="font-semibold text-slate-800">Sept 15, 2026</span>
+            </div>
+            <div class="flex items-center justify-between text-xs text-slate-600">
+              <span>Time Window</span>
+              <span id="confirm-time-window" class="font-semibold text-slate-800">2:00 PM – 4:00 PM</span>
+            </div>
+            <div class="flex items-center justify-between text-xs text-slate-600">
+              <span>Duration</span>
+              <span id="confirm-duration" class="font-semibold text-slate-800">2 Hours</span>
+            </div>
+            <div class="flex items-center justify-between text-xs text-slate-600 pt-1">
+              <span>Status</span>
+              <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800">Confirmed</span>
+            </div>
+          </div>
+
+          <div class="flex flex-col sm:flex-row gap-2">
+            <a href="{% url 'reservations:my_reservations' %}"
+               class="flex-1 py-2.5 px-4 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold transition-colors">
+              View My Reservations →
+            </a>
+            <button type="button" onclick="closeReservationModal()"
+                    class="py-2.5 px-4 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold transition-colors">
+              Done
+            </button>
+          </div>
+        </div>
+
       </div>
     </div>
-
   </div>
+
 </div>
 {% endblock %}
+
 
 {% block extra_js %}
 <script>
@@ -369,18 +578,23 @@ function renderCards(lots) {
       <!-- Actions -->
       <div class="flex gap-2">
         <button onclick="event.stopPropagation(); focusMapMarker(${lot.id})"
-                class="flex-1 py-1.5 px-3 text-xs font-medium bg-sky-50 text-sky-700 rounded-lg hover:bg-sky-100 transition-colors">
-          View on Map
+                class="py-1.5 px-2.5 text-xs font-medium bg-sky-50 text-sky-700 rounded-lg hover:bg-sky-100 transition-colors">
+          Map
+        </button>
+        <button onclick="event.stopPropagation(); openReservationModal(${lot.id}, '${lot.name.replace(/'/g, "\\'")}', ${lot.price_per_hour}, ${lot.available_slots})"
+                class="flex-1 py-1.5 px-3 text-xs font-bold bg-amber-500 hover:bg-amber-600 text-slate-950 rounded-lg transition-colors text-center shadow-sm">
+          Reserve
         </button>
         <a href="/parking/${lot.id}/"
            onclick="event.stopPropagation()"
-           class="flex-1 py-1.5 px-3 text-xs font-medium bg-slate-900 text-white rounded-lg hover:bg-slate-700 transition-colors text-center">
-          Details & Forecast →
+           class="py-1.5 px-2.5 text-xs font-medium bg-slate-900 text-white rounded-lg hover:bg-slate-700 transition-colors text-center">
+          Details →
         </a>
       </div>
     </div>`;
   }).join('');
 }
+
 
 // ── Focus & interaction ───────────────────────────────────────────────────
 function focusLot(id) {
@@ -452,10 +666,139 @@ function applyFilters() {
   renderMarkers(result);
 }
 
+// ── Reservation Modal Logic (Day 06) ──────────────────────────────────────
+let activeLotForReservation = null;
+
+function openReservationModal(lotId, lotName, pricePerHour, availableSlots) {
+  activeLotForReservation = {
+    id: lotId,
+    name: lotName,
+    price: parseFloat(pricePerHour) || 100,
+    availableSlots: parseInt(availableSlots) || 0,
+  };
+
+  document.getElementById('modal-lot-id').value = lotId;
+  document.getElementById('modal-lot-name').textContent = `${lotName} · Rs. ${activeLotForReservation.price.toFixed(0)}/hr`;
+  document.getElementById('modal-form-view').classList.remove('hidden');
+  document.getElementById('modal-success-view').classList.add('hidden');
+  document.getElementById('modal-error-box').classList.add('hidden');
+
+  // Default to today and next hour
+  const now = new Date();
+  const dateStr = now.toISOString().split('T')[0];
+  document.getElementById('res-date').value = dateStr;
+  document.getElementById('res-date').min = dateStr;
+
+  // Next hour
+  now.setHours(now.getHours() + 1);
+  const hoursStr = String(now.getHours()).padStart(2, '0');
+  document.getElementById('res-time').value = `${hoursStr}:00`;
+
+  updateEstimatedCost();
+  document.getElementById('reservation-modal').classList.remove('hidden');
+}
+
+function closeReservationModal() {
+  document.getElementById('reservation-modal').classList.add('hidden');
+}
+
+function updateEstimatedCost() {
+  if (!activeLotForReservation) return;
+  const duration = parseInt(document.getElementById('res-duration').value) || 1;
+  const price = activeLotForReservation.price;
+  const total = price * duration;
+  document.getElementById('modal-rate-text').textContent = `Rs. ${price.toFixed(0)}/hr × ${duration} hr${duration > 1 ? 's' : ''}`;
+  document.getElementById('modal-total-price').textContent = `Rs. ${total.toFixed(0)}`;
+}
+
+async function handleReservationSubmit(event) {
+  event.preventDefault();
+  const errorBox = document.getElementById('modal-error-box');
+  const errorText = document.getElementById('modal-error-text');
+  const submitBtn = document.getElementById('modal-submit-btn');
+  const spinner = document.getElementById('modal-spinner');
+  const btnLabel = document.getElementById('modal-btn-label');
+
+  errorBox.classList.add('hidden');
+  submitBtn.disabled = true;
+  spinner.classList.remove('hidden');
+  btnLabel.textContent = 'Allocating Slot…';
+
+  const payload = {
+    parking_lot: parseInt(document.getElementById('modal-lot-id').value),
+    reservation_date: document.getElementById('res-date').value,
+    start_time: document.getElementById('res-time').value,
+    duration: parseInt(document.getElementById('res-duration').value),
+  };
+
+  function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+      const cookies = document.cookie.split(';');
+      for (let i = 0; i < cookies.length; i++) {
+        const cookie = cookies[i].trim();
+        if (cookie.substring(0, name.length + 1) === (name + '=')) {
+          cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+          break;
+        }
+      }
+    }
+    return cookieValue;
+  }
+
+  const csrftoken = getCookie('csrftoken');
+  const headers = {
+    'Content-Type': 'application/json',
+  };
+  if (csrftoken) {
+    headers['X-CSRFToken'] = csrftoken;
+  }
+
+  try {
+    const res = await fetch('/api/reservations/', {
+      method: 'POST',
+      headers: headers,
+      body: JSON.stringify(payload),
+    });
+
+    const data = await res.json();
+
+    if (res.status === 201 && data.reservation) {
+      const r = data.reservation;
+      document.getElementById('modal-form-view').classList.add('hidden');
+      document.getElementById('modal-success-view').classList.remove('hidden');
+
+      document.getElementById('confirm-lot-name').textContent = r.parking_lot_name;
+      document.getElementById('confirm-slot-number').textContent = r.slot_number;
+      document.getElementById('confirm-date').textContent = r.reservation_date;
+      document.getElementById('confirm-time-window').textContent = `${r.start_time} – ${r.end_time}`;
+      document.getElementById('confirm-duration').textContent = `${r.duration} Hour${r.duration > 1 ? 's' : ''}`;
+    } else {
+      let msg = data.detail || (data.non_field_errors ? data.non_field_errors.join(' ') : 'Reservation could not be created.');
+      if (data.error === 'SLOT_CONFLICT') {
+        msg = 'This parking slot is already reserved for the selected time.';
+      } else if (data.error === 'NO_SLOTS_AVAILABLE') {
+        msg = 'No parking slots are available for this time.';
+      }
+      errorText.textContent = msg;
+      errorBox.classList.remove('hidden');
+    }
+  } catch (err) {
+    errorText.textContent = 'Network error while contacting reservation service.';
+    errorBox.classList.remove('hidden');
+  } finally {
+    submitBtn.disabled = false;
+    spinner.classList.add('hidden');
+    btnLabel.textContent = 'Confirm & Reserve Slot';
+  }
+}
+
 // ── Render everything ─────────────────────────────────────────────────────
 function renderAll() {
   applyFilters();
+  fetchRecommendations();
 }
+
 
 // ── Show location status ──────────────────────────────────────────────────
 function showLocationStatus(msg, color = 'sky') {
@@ -470,7 +813,74 @@ function showLocationStatus(msg, color = 'sky') {
   el.classList.remove('hidden');
 }
 
-// ── Event listeners ───────────────────────────────────────────────────────
+// ── Recommendation Engine Integration (Day 06) ───────────────────────────
+let currentRecommendations = null;
+
+async function fetchRecommendations() {
+  const recSection = document.getElementById('recommended-parking-section');
+  if (!recSection) return;
+
+  const distMax = document.getElementById('filter-distance')?.value || '';
+  const priceFilter = document.getElementById('filter-price')?.value || '';
+  let maxPrice = '';
+  if (priceFilter) {
+    const parts = priceFilter.split('-');
+    if (parts.length === 2 && parts[1] !== '9999') maxPrice = parts[1];
+  }
+  const availMin = document.getElementById('filter-availability')?.value || '';
+
+  const params = new URLSearchParams();
+  if (userLat !== null && userLon !== null) {
+    params.set('lat', userLat);
+    params.set('lon', userLon);
+  }
+  if (distMax) params.set('distance', distMax);
+  if (maxPrice) params.set('max_price', maxPrice);
+  if (availMin) params.set('min_slots', availMin);
+
+  try {
+    const res = await fetch(`/api/parking/recommendations/?${params.toString()}`);
+    if (!res.ok) return;
+    const data = await res.json();
+    currentRecommendations = data;
+
+    if (data && data.recommended_parking) {
+      renderRecommendedCard(data.recommended_parking);
+      recSection.classList.remove('hidden');
+    } else {
+      recSection.classList.add('hidden');
+    }
+  } catch (err) {
+    console.warn('Unable to load smart recommendations:', err);
+  }
+}
+
+function renderRecommendedCard(rec) {
+  document.getElementById('rec-score-badge').textContent = `Score: ${rec.score.toFixed(1)} / 100`;
+  document.getElementById('rec-lot-name').textContent = rec.name;
+  document.getElementById('rec-lot-address').textContent = rec.address;
+  document.getElementById('rec-dist').textContent = rec.distance_text || `${rec.distance_meters} m`;
+  document.getElementById('rec-price').textContent = `Rs. ${rec.price_per_hour.toFixed(0)}/hr`;
+  document.getElementById('rec-avail').textContent = `${rec.available_slots}/${rec.total_slots}`;
+  document.getElementById('rec-pred').textContent = `${rec.predicted_min}–${rec.predicted_max}`;
+  document.getElementById('rec-view-btn').href = `/parking/${rec.id}/`;
+  
+  const resBtn = document.getElementById('rec-reserve-btn');
+  if (resBtn) {
+    resBtn.onclick = () => openReservationModal(rec.id, rec.name, rec.price_per_hour, rec.available_slots);
+  }
+
+  const reasonsList = document.getElementById('rec-reasons-list');
+  if (reasonsList) {
+    reasonsList.innerHTML = (rec.reasons || []).map(r => `
+      <li class="flex items-center gap-2">
+        <span class="text-emerald-400 font-bold">✓</span>
+        <span>${r}</span>
+      </li>
+    `).join('');
+  }
+}
+
 document.getElementById('locate-btn').addEventListener('click', function() {
   if (!navigator.geolocation) {
     showLocationStatus('Geolocation is not supported by your browser.', 'red');

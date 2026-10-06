@@ -30,10 +30,18 @@ from .serializers import (
     ParkingSlotSerializer,
     ParkingAvailabilitySerializer,
     ParkingPredictionSerializer,
+    ParkingRecommendationResponseSerializer,
+    ParkingRecommendationItemSerializer,
 )
 from .services import broadcast_parking_availability, broadcast_slot_update
 from .utils import haversine_distance, format_distance
+from .recommendation import (
+    RecommendationScoringService,
+    RecommendationWeights,
+    get_parking_recommendations,
+)
 from ml.src.predict import predict_availability
+
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -249,6 +257,84 @@ class ParkingPredictionAPIView(APIView):
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
 
+
+class ParkingRecommendationAPIView(APIView):
+    """
+    GET /api/parking/recommendations/
+    POST /api/parking/recommendations/
+
+    Returns multi-factor ranked parking recommendations using:
+      1. Current Availability (25%)
+      2. Predicted Availability via Day 05 ML Model (30%)
+      3. Proximity / Distance (20%)
+      4. Hourly Price (15%)
+      5. Estimated Walking Distance (10%)
+
+    Optional query parameters:
+      - lat, lon: User's current coordinates
+      - dest_lat, dest_lon: Destination coordinates (takes precedence for distance)
+      - distance / max_distance: Max distance threshold in km (default: 5.0)
+      - max_price: Price threshold / preference
+      - min_slots: Minimum available spaces required
+      - duration: Expected parking duration in minutes (default: 60)
+      - event: Nearby event flag (1/true/yes)
+      - holiday: Public holiday flag (1/true/yes)
+    """
+    permission_classes = [AllowAny]
+
+    def get(self, request):
+        return self._recommend(request, request.query_params)
+
+    def post(self, request):
+        return self._recommend(request, request.data)
+
+    def _recommend(self, request, params):
+        queryset = ParkingLot.objects.select_related('owner').prefetch_related('slots').all()
+
+        user_lat = params.get('lat')
+        user_lon = params.get('lon')
+        dest_lat = params.get('dest_lat', params.get('destination_lat'))
+        dest_lon = params.get('dest_lon', params.get('destination_lon'))
+        max_distance = params.get('distance', params.get('max_distance', 5.0))
+        max_price = params.get('max_price')
+        min_slots = params.get('min_slots')
+        avg_duration = params.get('duration', params.get('avg_duration', 60.0))
+        has_event = str(params.get('has_event', params.get('event', ''))).lower() in ['1', 'true', 'yes']
+        is_holiday = str(params.get('is_holiday', params.get('holiday', ''))).lower() in ['1', 'true', 'yes']
+
+        def safe_float(val, default=None):
+            if val is None or val == '':
+                return default
+            try:
+                return float(val)
+            except (ValueError, TypeError):
+                return default
+
+        u_lat = safe_float(user_lat)
+        u_lon = safe_float(user_lon)
+        d_lat = safe_float(dest_lat)
+        d_lon = safe_float(dest_lon)
+        m_dist = safe_float(max_distance, 5.0)
+        m_price = safe_float(max_price)
+        m_slots = int(min_slots) if min_slots and str(min_slots).isdigit() else None
+        duration = safe_float(avg_duration, 60.0)
+
+        results = get_parking_recommendations(
+            parking_lots=queryset,
+            user_lat=u_lat,
+            user_lon=u_lon,
+            dest_lat=d_lat,
+            dest_lon=d_lon,
+            max_distance_km=m_dist if m_dist is not None else 5.0,
+            max_price=m_price,
+            min_slots=m_slots,
+            avg_duration=duration if duration is not None else 60.0,
+            has_event=has_event,
+            is_holiday=is_holiday,
+        )
+
+        serializer = ParkingRecommendationResponseSerializer(results)
+        return Response(serializer.data, status=status.HTTP_200_OK)
 
 
 class ParkingSlotsAPIView(APIView):

@@ -514,7 +514,63 @@ python manage.py predict_parking_availability --name "Parking A" --total-slots 1
 
 ---
 
-## 21. 8-Day Development Roadmap
+## 21. Day 06 — Smart Recommendation + Reservation
+
+Day 06 integrates real-time telemetry, Day 05 ML availability predictions, and geospatial distance to deliver intelligent parking recommendations and conflict-free slot reservations.
+
+### ⭐ Smart Recommendation Engine
+The recommendation engine evaluates all candidate parking facilities using a multi-factor weighted scoring model where each factor is normalized to a common `0–100` scale (higher score = better option):
+
+* **Current Availability (25%)**: Ratio of currently available spaces relative to total facility capacity.
+* **Predicted Availability (30%)**: 20-minute ahead forecast from the Day 05 Random Forest model, anticipating congestion before arrival.
+* **Distance (20%)**: Great-circle proximity from user location or destination computed via Haversine formula.
+* **Price (15%)**: Hourly parking rate in Sri Lankan Rupees, prioritizing economical choices.
+* **Walking Distance (10%)**: Estimated pedestrian route distance calibrated using an urban network routing factor (1.25× straight-line).
+
+#### Weighted Scoring Formula:
+$$\text{Final Score} = (\text{Avail Score} \times 0.25) + (\text{Pred Avail Score} \times 0.30) + (\text{Dist Score} \times 0.20) + (\text{Price Score} \times 0.15) + (\text{Walk Score} \times 0.10)$$
+
+#### Explainable Recommendations ("Why this parking?"):
+The engine generates human-understandable justifications directly supported by actual factor data:
+* ✓ *High current availability (25/30 spots open)*
+* ✓ *Strong predicted availability (18–25 spaces expected)*
+* ✓ *Economical rate at Rs. 100/hour*
+* ✓ *Close proximity (450 m away)*
+* ✓ *Short walking distance (~560 m)*
+
+---
+
+### 📅 Parking Reservation System
+Authenticated customers can reserve a parking slot in advance:
+1. **Facility Selection**: Choose target parking facility directly from Finder or Detail page.
+2. **Booking Parameters**: Select reservation date, start time, and duration (1 to 24 hours).
+3. **Time Calculation**: Automatically computes timezone-aware `start_datetime`, `end_datetime`, and local `end_time`.
+4. **Slot Assignment**: Backend dynamically allocates an unreserved physical `ParkingSlot` (e.g. `Slot A-24`).
+5. **Customer Dashboard**: Dedicated `/reservations/` interface with Upcoming, Past, and Cancelled tabs and one-click cancellation.
+
+---
+
+### 🛡️ Backend Conflict Prevention & Concurrency Control
+The backend strictly guarantees that no two customers can book the same slot for overlapping time intervals:
+* **Strict Overlap Detection**: Reservations conflict if:
+  $$\text{existing.start\_datetime} < \text{new\_end\_datetime} \quad \text{AND} \quad \text{existing.end\_datetime} > \text{new\_start\_datetime}$$
+* **Adjacent Boundary Safe**: Non-overlapping adjacent bookings (e.g. 2:00–4:00 PM and 4:00–6:00 PM) are permitted on the same slot without conflict.
+* **Concurrency Protection**: Uses Django database transactions (`transaction.atomic()`) with row-level locking (`select_for_update()`) during candidate slot allocation.
+
+---
+
+### 📡 Day 06 API Endpoints
+| Method | Endpoint | Access | Description |
+|---|---|---|---|
+| `GET` | `/api/parking/recommendations/` | Public | Returns ranked parking lots and top recommended parking based on multi-factor weighted score. Supports filters: `lat`, `lon`, `distance`, `max_price`, `min_slots`. |
+| `GET` | `/api/reservations/` | Authenticated | Lists reservations (customers see own bookings; providers see bookings for their lots; staff see all). |
+| `POST` | `/api/reservations/` | Authenticated | Atomically books a parking slot for a specified date, time, and duration. Returns 201 Created or conflict error. |
+| `GET` | `/api/reservations/<id>/` | Authenticated | Retrieves detailed reservation data including allocated slot and timestamps. |
+| `POST` | `/api/reservations/<id>/cancel/` | Authenticated | Cancels an active confirmed reservation. |
+
+---
+
+## 22. 8-Day Development Roadmap
 
 | Day | Title | Status | Key Objectives |
 |---|---|---|---|
@@ -523,8 +579,9 @@ python manage.py predict_parking_availability --name "Parking A" --total-slots 1
 | **Day 3** | **Parking Locations & Map** | ✅ Completed | Parking garages & surface lots model, geospatial coordinates, Leaflet map, distance filters. |
 | **Day 4** | **Real-Time Parking Availability** | ✅ Completed | ParkingSlot model, Django Channels, WebSockets, simulated car entry/exit, live slot grid, 87 total tests. |
 | **Day 5** | **ML Availability Prediction** | ✅ Completed | RandomForestRegressor, 20-min forecasting, uncertainty range, confidence, capacity warnings, API & UI. |
-| **Day 6** | **Smart Recommendation & Reservation** | ⏳ Planned | Spring Boot scoring algorithm (distance, rate, occupancy, walking time), slot booking, and reservation holds. |
+| **Day 6** | **Smart Recommendation & Reservation** | ✅ Completed | Multi-factor weighted recommendation engine (25% avail, 30% pred, 20% dist, 15% price, 10% walk), atomic conflict-free slot reservations, `/reservations/` UI, 118 total tests. |
 | **Day 7** | **Parking Session, AI & Alerts** | ⏳ Planned | Active parking session timers, fee calculator, automated notifications, conversational parking assistant. |
 | **Day 8** | **Dashboard, Testing & Deployment**| ⏳ Planned | Driver & operator analytics dashboards, end-to-end tests, Dockerization, and production deployment guide. |
+
 
 

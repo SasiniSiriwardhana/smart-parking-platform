@@ -85,6 +85,7 @@
                     <a href="{% url 'parking:finder' %}" class="px-3.5 py-2 text-sm font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100/70 rounded-lg transition-colors">Find Parking</a>
 
                     {% if user.is_authenticated %}
+                        <a href="{% url 'reservations:my_reservations' %}" class="px-3.5 py-2 text-sm font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100/70 rounded-lg transition-colors">My Reservations</a>
                         <a href="{% url 'accounts:dashboard' %}" class="px-3.5 py-2 text-sm font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100/70 rounded-lg transition-colors">Dashboard</a>
                         <a href="{% url 'accounts:profile' %}" class="px-3.5 py-2 text-sm font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100/70 rounded-lg transition-colors">Profile</a>
                     {% else %}
@@ -138,6 +139,10 @@
         <div id="mobile-menu" class="md:hidden border-t border-slate-200 bg-white/95 backdrop-blur-sm px-4 py-4 space-y-1">
             <a href="/" class="block px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-sky-50 rounded-xl transition-colors">Home</a>
             <a href="{% url 'parking:finder' %}" class="block px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-sky-50 rounded-xl transition-colors">Find Parking</a>
+            {% if user.is_authenticated %}
+                <a href="{% url 'reservations:my_reservations' %}" class="block px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-sky-50 rounded-xl transition-colors">My Reservations</a>
+            {% endif %}
+
             {% if user.is_authenticated %}
                 <div class="px-4 py-2 border-b border-slate-100 mb-1">
                     <p class="text-xs text-slate-500">Signed in as</p>

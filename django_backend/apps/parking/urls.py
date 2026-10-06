@@ -31,5 +31,9 @@ urlpatterns = [
 
     # ── Day 05 ML Availability Prediction API endpoint ───────────────────────
     path('api/parking/<int:pk>/prediction/', views.ParkingPredictionAPIView.as_view(), name='api_prediction'),
+
+    # ── Day 06 Smart Recommendation API endpoint ──────────────────────────────
+    path('api/parking/recommendations/', views.ParkingRecommendationAPIView.as_view(), name='api_recommendations'),
 ]
+
 
