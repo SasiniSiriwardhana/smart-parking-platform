@@ -20,7 +20,11 @@ urlpatterns = [
     # Parking Lots & Map-Based Finder (Day 3)
     path('', include('apps.parking.urls', namespace='parking')),
 
+    # Reservations & Smart Recommendation (Day 6)
+    path('', include('apps.reservations.urls', namespace='reservations')),
+
     # Django Admin Site
     path('admin/', admin.site.urls),
+
 ]
 
