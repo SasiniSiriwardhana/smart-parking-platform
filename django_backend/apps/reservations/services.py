@@ -123,3 +123,128 @@ def find_available_slot(
 
     return candidate_slots.first()
 
+
+def check_slot_conflict(
+    parking_slot: ParkingSlot,
+    start_datetime: datetime,
+    end_datetime: datetime,
+    exclude_reservation_id: Optional[int] = None,
+) -> bool:
+    """
+    Check if a specific parking slot has any overlapping confirmed/pending reservation.
+    Overlaps occur when:
+        existing.start_datetime < new_end_datetime AND existing.end_datetime > new_start_datetime
+    Boundary contacts (start == existing.end or end == existing.start) are non-conflicting.
+    """
+    qs = Reservation.objects.filter(
+        parking_slot=parking_slot,
+        status__in=[ReservationStatus.CONFIRMED, ReservationStatus.PENDING],
+        start_datetime__lt=end_datetime,
+        end_datetime__gt=start_datetime,
+    )
+    if exclude_reservation_id:
+        qs = qs.exclude(id=exclude_reservation_id)
+    return qs.exists()
+
+
+@transaction.atomic
+def create_reservation(
+    user,
+    parking_lot: ParkingLot,
+    reservation_date: date,
+    start_time: time,
+    duration: int,
+    preferred_slot_id: Optional[int] = None,
+    allow_past: bool = False,
+) -> Reservation:
+    """
+    Atomically allocate an available parking slot and create a confirmed reservation.
+    Guarantees conflict prevention under concurrency using database transactions and locking.
+    """
+    start_dt, end_dt, end_tm = validate_reservation_times(
+        reservation_date=reservation_date,
+        start_time=start_time,
+        duration_hours=duration,
+        parking_lot=parking_lot,
+        allow_past=allow_past,
+    )
+
+    if not parking_lot.slots.exists():
+        parking_lot.generate_default_slots()
+
+    # If user selected a specific preferred slot, verify it directly
+    if preferred_slot_id:
+        try:
+            slot = ParkingSlot.objects.select_for_update().get(
+                id=preferred_slot_id,
+                parking_lot=parking_lot
+            )
+            if check_slot_conflict(slot, start_dt, end_dt):
+                raise SlotConflictError(
+                    _("This parking slot is already reserved for the selected time.")
+                )
+        except ParkingSlot.DoesNotExist:
+            raise ReservationValidationError(_("Selected parking slot does not exist."))
+    else:
+        # Find candidate slots and obtain row lock on the chosen slot
+        # Get list of currently booked slot IDs in target window
+        booked_slot_ids = list(
+            Reservation.objects.filter(
+                parking_lot=parking_lot,
+                status__in=[ReservationStatus.CONFIRMED, ReservationStatus.PENDING],
+                start_datetime__lt=end_dt,
+                end_datetime__gt=start_dt,
+            ).values_list('parking_slot_id', flat=True)
+        )
+
+        available_slots_qs = parking_lot.slots.exclude(
+            id__in=booked_slot_ids
+        ).order_by('slot_number')
+
+        slot = None
+        # Select first free slot with row lock
+        for candidate in available_slots_qs:
+            locked_slot = ParkingSlot.objects.select_for_update().filter(id=candidate.id).first()
+            if locked_slot and not check_slot_conflict(locked_slot, start_dt, end_dt):
+                slot = locked_slot
+                break
+
+        if not slot:
+            raise NoAvailableSlotError(
+                _("No parking slots are available for this time.")
+            )
+
+    reservation = Reservation(
+        user=user,
+        parking_lot=parking_lot,
+        parking_slot=slot,
+        reservation_date=reservation_date,
+        start_time=start_time,
+        duration=int(duration),
+        end_time=end_tm,
+        start_datetime=start_dt,
+        end_datetime=end_dt,
+        status=ReservationStatus.CONFIRMED,
+    )
+    reservation.save()
+    return reservation
+
+
+def cancel_reservation(reservation: Reservation, user) -> Reservation:
+    """
+    Cancel an active reservation if user is the owner or staff.
+    """
+    if reservation.user_id != user.id and not (user.is_staff or user.is_superuser):
+        raise ValidationError(_("You do not have permission to cancel this reservation."))
+
+    if reservation.status == ReservationStatus.CANCELLED:
+        raise ValidationError(_("This reservation is already cancelled."))
+
+    if reservation.status == ReservationStatus.COMPLETED:
+        raise ValidationError(_("Completed reservations cannot be cancelled."))
+
+    reservation.status = ReservationStatus.CANCELLED
+    reservation.save(update_fields=['status', 'updated_at'])
+    return reservation
+
+
