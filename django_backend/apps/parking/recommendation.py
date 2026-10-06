@@ -61,6 +61,9 @@ class NormalizedScores:
     final_score: float
 
 
+from .utils import haversine_distance, format_distance
+
+
 class RecommendationScoringService:
     """
     Core scoring service for parking lot recommendations.
@@ -74,3 +77,57 @@ class RecommendationScoringService:
                 "Recommendation weights do not sum to 1.0. Using default normalized weights."
             )
             self.weights = RecommendationWeights()
+
+    @staticmethod
+    def calculate_distance_km(
+        user_lat: float,
+        user_lon: float,
+        lot_lat: float,
+        lot_lon: float
+    ) -> float:
+        """
+        Calculate straight-line distance in kilometres using the existing Haversine utility.
+        """
+        return haversine_distance(user_lat, user_lon, lot_lat, lot_lon)
+
+    @staticmethod
+    def estimate_walking_distance_meters(distance_km: float) -> int:
+        """
+        Estimate pedestrian walking distance in meters from straight-line distance
+        using a standard urban grid factor (1.25x).
+        """
+        straight_line_meters = distance_km * 1000.0
+        return int(round(straight_line_meters * WALKING_DISTANCE_FACTOR))
+
+    @staticmethod
+    def normalize_distance_score(
+        distance_km: float,
+        max_distance_km: float = DEFAULT_MAX_DISTANCE_KM
+    ) -> float:
+        """
+        Normalize distance score on a 0–100 scale (shorter distance = higher score).
+        - 0 km -> 100.0
+        - >= max_distance_km -> 0.0
+        """
+        if max_distance_km <= 0:
+            return 100.0
+        dist = max(0.0, float(distance_km))
+        score = 100.0 * (1.0 - (dist / max_distance_km))
+        return round(max(0.0, min(100.0, score)), 2)
+
+    @staticmethod
+    def normalize_walking_distance_score(
+        walking_meters: float,
+        max_walking_meters: float = DEFAULT_MAX_WALKING_METERS
+    ) -> float:
+        """
+        Normalize walking distance score on a 0–100 scale (shorter walk = higher score).
+        - 0 m -> 100.0
+        - >= max_walking_meters -> 0.0
+        """
+        if max_walking_meters <= 0:
+            return 100.0
+        walk_m = max(0.0, float(walking_meters))
+        score = 100.0 * (1.0 - (walk_m / max_walking_meters))
+        return round(max(0.0, min(100.0, score)), 2)
+
